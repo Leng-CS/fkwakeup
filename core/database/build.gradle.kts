@@ -31,6 +31,7 @@ ksp {
 
 dependencies {
     api(project(":core:model"))
+    implementation(project(":core:common"))
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

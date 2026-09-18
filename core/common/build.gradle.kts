@@ -8,7 +8,8 @@ java {
 }
 
 dependencies {
-    // M1 将在此实现 WeekSpecParser 与时间工具
+    api(project(":core:model"))
+
     testImplementation(libs.junit)
     testImplementation(libs.truth)
 }

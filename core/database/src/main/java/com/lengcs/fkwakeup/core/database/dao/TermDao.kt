@@ -32,6 +32,9 @@ interface TermDao {
     @Query("SELECT * FROM terms WHERE id = :id")
     suspend fun getById(id: Long): TermEntity?
 
+    @Query("UPDATE terms SET is_archived = :archived WHERE id = :id")
+    suspend fun setArchived(id: Long, archived: Boolean)
+
     @Query("SELECT COUNT(*) FROM terms")
     suspend fun count(): Int
 }
