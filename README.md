@@ -40,6 +40,7 @@ Android 课程表 App。把教务系统里那张难用的课表图片，30 秒�
 | [`docs/project-blueprint.md`](docs/project-blueprint.md) | **主文档**。数据模型、导入格式规范、实现方案、难度评估、里程碑 |
 | [`docs/recognition-prompt.md`](docs/recognition-prompt.md) | App 内置提示词与全部 UI 文案，是 `strings.xml` 与 `res/raw` 的唯一来源 |
 | [`docs/timetable-sample.json`](docs/timetable-sample.json) | 导入格式示例，覆盖单双周、跳周、跨节次、空字段 |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md) | 交接文档：项目导航、已定决策、工程环境注意事项。**换人/换模型接手时先读这个** |
 | [`AGENTS.md`](AGENTS.md) | 给 AI 编码助手的项目约定，开工前必读 |
 
 ## 开发路线
