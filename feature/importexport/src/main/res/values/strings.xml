@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 分步引导 -->
+    <string name="import_step_1">第 1 步　去教务系统截一张完整的课表</string>
+    <string name="import_step_1_tip1">要能看到星期表头和左侧节次列，别只截课程格子</string>
+    <string name="import_step_1_tip2">课表太长就分两次截，一次识别半张</string>
+    <string name="import_step_1_tip3">避免模糊、反光、只截一半</string>
+    <string name="import_step_2">第 2 步　复制提示词，连截图一起发给你常用的 AI</string>
+    <string name="import_step_3">第 3 步　把 AI 的回复整段复制，回到本页粘贴</string>
+    <string name="import_step_4">第 4 步　确认识别结果，微调后导入</string>
+
+    <!-- 复制区 -->
+    <string name="import_copy_prompt">复制提示词</string>
+    <string name="import_copied">提示词已复制，去粘贴给 AI 吧</string>
+    <string name="import_ai_support">支持 ChatGPT / Claude / 豆包 / 通义 / Gemini 等任意 AI</string>
+    <string name="import_view_prompt">查看完整提示词（可手动复制）</string>
+
+    <!-- 粘贴区 -->
+    <string name="import_paste_hint">把 AI 的回复整段粘贴到这里，不用清理 ```json 标记</string>
+    <string name="import_from_clipboard">从剪贴板粘贴</string>
+    <string name="import_clear">清空</string>
+    <string name="import_parse">开始解析</string>
+    <string name="import_empty_hint">还没有内容？先复制提示词去问 AI</string>
+
+    <!-- Tab -->
+    <string name="import_tab_ai">AI 识别建课表</string>
+    <string name="import_tab_file">从文件导入</string>
+    <string name="import_pick_file">选择课表文件</string>
+
+    <!-- 失败页 -->
+    <string name="import_fail_title">没能识别出课表</string>
+    <string name="import_fail_copy_report">复制错误报告，让 AI 重新生成</string>
+    <string name="import_fail_manual">手动修改</string>
+    <string name="import_fail_retry">换一张截图重来</string>
+    <string name="import_report_copied">已复制，粘贴给 AI 让它重新生成</string>
+
+    <!-- 预览页 -->
+    <string name="preview_title">确认识别结果</string>
+    <string name="preview_summary">共 %1$d 个时间段 → 归并为 %2$d 门课程</string>
+    <string name="preview_term_card">学期信息</string>
+    <string name="preview_term_name">学期名称</string>
+    <string name="preview_term_weeks">总周数</string>
+    <string name="preview_split">拆分为新课</string>
+    <string name="preview_delete">删除</string>
+    <string name="preview_confirm">确认导入</string>
+    <string name="preview_importing">正在导入…</string>
+    <string name="preview_no_session">该课程暂无时间段</string>
+    <string name="preview_session_item">周%1$s 第%2$d-%3$d节 · %4$s周 · %5$s</string>
+    <string name="preview_location_unknown">地点未识别</string>
+
+    <string name="week_1">一</string>
+    <string name="week_2">二</string>
+    <string name="week_3">三</string>
+    <string name="week_4">四</string>
+    <string name="week_5">五</string>
+    <string name="week_6">六</string>
+    <string name="week_7">日</string>
+</resources>
