@@ -16,6 +16,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -34,34 +36,48 @@ object Routes {
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    /**
+     * 分享进来的文本。放在 Activity 层，因为它有两个入口：
+     * 冷启动走 onCreate，App 已在运行时走 onNewIntent。
+     */
+    private val incomingText = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        val sharedText = intent?.getStringExtra(Intent.EXTRA_TEXT)
-        val startDestination = if (sharedText.isNullOrBlank()) Routes.HOME else Routes.IMPORT
+        incomingText.value = intent?.getStringExtra(Intent.EXTRA_TEXT)
 
         setContent {
             FkwakeupTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    FkwakeupApp(
-                        startDestination = startDestination,
-                        sharedText = sharedText,
-                    )
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    FkwakeupApp(sharedText = incomingText.value)
                 }
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        incomingText.value = intent.getStringExtra(Intent.EXTRA_TEXT)
+    }
 }
 
 @Composable
-private fun FkwakeupApp(
-    startDestination: String,
-    sharedText: String?,
-) {
+private fun FkwakeupApp(sharedText: String?) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = startDestination) {
+    // 冷启动自带文本、或运行中被分享唤起，两种情况都要落到导入页
+    LaunchedEffect(sharedText) {
+        if (!sharedText.isNullOrBlank()) {
+            navController.navigate(Routes.IMPORT) { launchSingleTop = true }
+        }
+    }
+
+    NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
             HomeScreen(onImportClick = { navController.navigate(Routes.IMPORT) })
         }
