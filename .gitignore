@@ -1,0 +1,50 @@
+# Gradle
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# Gradle wrapper (keep the jar? no - uncomment if you want it ignored)
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.navigation/
+
+# Android Studio
+misc.xml
+deploymentTargetDropDown.xml
+render.experimental.xml
+
+# Kotlin / Compose
+.kotlin/
+*.class
+
+# Signing
+*.jks
+*.keystore
+!debug.keystore
+
+# Build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Logs & temp
+*.log
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Native
+obj/
+.externalNativeBuild/
