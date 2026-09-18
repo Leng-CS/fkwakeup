@@ -1,0 +1,79 @@
+package com.lengcs.fkwakeup.core.importer.model
+
+import com.lengcs.fkwakeup.core.model.SectionTemplate
+import java.time.LocalDate
+
+/** 错误码（主开发文档 5.5） */
+object ErrorCodes {
+    const val NO_JSON = "E_NO_JSON"
+    const val FORMAT = "E_FORMAT"
+    const val VERSION = "E_VERSION"
+    const val TERM_DATE = "E_TERM_DATE"
+    const val DOW = "E_DOW"
+    const val SECTION_RANGE = "E_SECTION_RANGE"
+    const val SECTION_OOB = "E_SECTION_OOB"
+    const val WEEKSPEC = "E_WEEKSPEC"
+    const val TIME = "E_TIME"
+}
+
+/**
+ * 导入错误。[recordIndex] 为 null 表示文件级错误，否则指向第 N 条记录（1 起）。
+ */
+data class ImportError(
+    val code: String,
+    val message: String,
+    val recordIndex: Int? = null,
+) {
+    fun withIndex(index: Int): ImportError = copy(recordIndex = index)
+}
+
+/** 学期草稿 */
+data class TermDraft(
+    val name: String,
+    val startMonday: LocalDate,
+    val totalWeeks: Int,
+)
+
+/**
+ * 单条上课时间段草稿。字段可为 null —— 归一化阶段不抛异常，
+ * 由校验阶段统一产出可定位的错误，这样预览页能一次列出所有问题。
+ */
+data class SessionDraft(
+    val index: Int,
+    val name: String?,
+    val teacher: String?,
+    val location: String?,
+    val dayOfWeek: Int?,
+    val startSection: Int?,
+    val endSection: Int?,
+    val weeks: String?,
+    val note: String?,
+)
+
+/** 归一化后的完整导入草稿 */
+data class ImportDraft(
+    val term: TermDraft?,
+    val sectionTemplates: List<SectionTemplate>?,
+    val sessions: List<SessionDraft>,
+    val errors: List<ImportError>,
+)
+
+/** 归并后的一门课（按 名称+教师 归并键） */
+data class MergedCourse(
+    val name: String,
+    val teacher: String?,
+    val sessions: List<SessionDraft>,
+)
+
+/** 导入结果 */
+data class ImportResult(
+    val term: TermDraft?,
+    val sectionTemplates: List<SectionTemplate>?,
+    val courses: List<MergedCourse>,
+    val errors: List<ImportError>,
+    val sessionCount: Int,
+) {
+    /** 无文件级错误且至少识别出一条记录 */
+    val isSuccess: Boolean
+        get() = errors.none { it.recordIndex == null } && sessionCount > 0
+}
