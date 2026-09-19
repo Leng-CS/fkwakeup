@@ -22,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -46,6 +47,7 @@ private val WEEKDAYS = listOf("周一", "周二", "周三", "周四", "周五", 
 @Composable
 fun ScheduleScreen(
     onImportClick: () -> Unit,
+    onManageClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ScheduleViewModel = hiltViewModel(),
 ) {
@@ -59,6 +61,7 @@ fun ScheduleScreen(
             onPrev = viewModel::previousWeek,
             onNext = viewModel::nextWeek,
             onToday = viewModel::backToCurrentWeek,
+            onManage = onManageClick,
         )
 
         if (state.term == null || state.isEmpty) {
@@ -95,6 +98,7 @@ private fun ScheduleTopBar(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onToday: () -> Unit,
+    onManage: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -111,6 +115,7 @@ private fun ScheduleTopBar(
                 .weight(1f)
                 .padding(start = 12.dp),
         )
+        TextButton(onClick = onManage) { Text("管理", style = MaterialTheme.typography.labelMedium) }
         Text(
             text = buildString {
                 append(stringResource(R.string.schedule_week_label, displayWeek))

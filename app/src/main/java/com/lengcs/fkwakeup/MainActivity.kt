@@ -25,6 +25,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.lengcs.fkwakeup.core.designsystem.theme.FkwakeupTheme
+import com.lengcs.fkwakeup.feature.course.CourseEditScreen
+import com.lengcs.fkwakeup.feature.course.CourseManageScreen
+import com.lengcs.fkwakeup.feature.course.SectionTemplateScreen
+import com.lengcs.fkwakeup.feature.course.TermManageScreen
 import com.lengcs.fkwakeup.feature.importexport.ImportFlow
 import com.lengcs.fkwakeup.feature.schedule.ScheduleScreen
 import dagger.hilt.android.AndroidEntryPoint
@@ -32,6 +36,12 @@ import dagger.hilt.android.AndroidEntryPoint
 object Routes {
     const val HOME = "home"
     const val IMPORT = "import"
+    const val MANAGE = "manage"
+    const val COURSE_EDIT = "course/{courseId}"
+    const val TERM = "term"
+    const val SECTIONS = "sections"
+
+    fun courseEdit(courseId: Long = 0L) = "course/$courseId"
 }
 
 @AndroidEntryPoint
@@ -85,9 +95,32 @@ private fun FkwakeupApp(sharedText: String?) {
             Scaffold { padding ->
                 ScheduleScreen(
                     onImportClick = { navController.navigate(Routes.IMPORT) },
+                    onManageClick = { navController.navigate(Routes.MANAGE) },
                     modifier = Modifier.padding(padding),
                 )
             }
+        }
+
+        composable(Routes.MANAGE) {
+            CourseManageScreen(
+                onBack = { navController.popBackStack() },
+                onAddCourse = { navController.navigate(Routes.courseEdit(0L)) },
+                onEditCourse = { id -> navController.navigate(Routes.courseEdit(id)) },
+                onManageTerms = { navController.navigate(Routes.TERM) },
+                onManageSections = { navController.navigate(Routes.SECTIONS) },
+            )
+        }
+
+        composable(Routes.COURSE_EDIT) {
+            CourseEditScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.TERM) {
+            TermManageScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.SECTIONS) {
+            SectionTemplateScreen(onBack = { navController.popBackStack() })
         }
         composable(Routes.IMPORT) {
             Scaffold { padding ->
