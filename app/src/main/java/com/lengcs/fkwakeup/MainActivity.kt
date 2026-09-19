@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.lengcs.fkwakeup.core.designsystem.theme.FkwakeupTheme
 import com.lengcs.fkwakeup.feature.importexport.ImportFlow
+import com.lengcs.fkwakeup.feature.schedule.ScheduleScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 object Routes {
@@ -79,7 +80,14 @@ private fun FkwakeupApp(sharedText: String?) {
 
     NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
-            HomeScreen(onImportClick = { navController.navigate(Routes.IMPORT) })
+            // enableEdgeToEdge 之后必须让 Scaffold 处理系统栏内边距，
+            // 否则顶栏会被状态栏压住、按钮点不到
+            Scaffold { padding ->
+                ScheduleScreen(
+                    onImportClick = { navController.navigate(Routes.IMPORT) },
+                    modifier = Modifier.padding(padding),
+                )
+            }
         }
         composable(Routes.IMPORT) {
             Scaffold { padding ->
@@ -97,28 +105,3 @@ private fun FkwakeupApp(sharedText: String?) {
     }
 }
 
-@Composable
-private fun HomeScreen(onImportClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = "fkwakeup", style = MaterialTheme.typography.headlineMedium)
-        Text(
-            text = "还没有课表，导入一份试试",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        Button(
-            onClick = onImportClick,
-            modifier = Modifier
-                .padding(top = 24.dp)
-                .fillMaxWidth(),
-        ) {
-            Text("导入课表")
-        }
-    }
-}

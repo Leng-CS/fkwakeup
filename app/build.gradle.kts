@@ -62,4 +62,5 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
     implementation(project(":feature:importexport"))
+    implementation(project(":feature:schedule"))
 }
