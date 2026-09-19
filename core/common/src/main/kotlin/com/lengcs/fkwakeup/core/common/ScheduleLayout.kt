@@ -25,6 +25,10 @@ data class ScheduleBlock(
     val columnIndex: Int = 0,
     /** 同一时间段内一共几个块（1 表示无冲突） */
     val columnCount: Int = 1,
+    /** 本块开始时间（自 00:00 起的分钟数），节次时间表缺失时为 null */
+    val startMinutes: Int? = null,
+    /** 本块结束时间，节次时间表缺失时为 null */
+    val endMinutes: Int? = null,
 )
 
 /**
@@ -38,12 +42,15 @@ object ScheduleLayout {
      * @param courses 课程及其全部时间段
      * @param week 要渲染的周次（1 起）
      * @param totalWeeks 学期总周数，用于解析周次表达式
+     * @param sections 节次时间表，用于把节次换算成具体时间；不传则块上没有时间
      */
     fun build(
         courses: List<CourseWithSessions>,
         week: Int,
         totalWeeks: Int,
+        sections: List<SectionTemplate> = emptyList(),
     ): List<ScheduleBlock> {
+        val sectionTimes = sections.associateBy { it.index }
         val raw = mutableListOf<ScheduleBlock>()
 
         for (entry in courses) {
@@ -58,6 +65,8 @@ object ScheduleLayout {
                     dayIndex = (session.dayOfWeek - 1).coerceIn(0, 6),
                     startRow = (session.startSection - 1).coerceAtLeast(0),
                     rowSpan = (session.endSection - session.startSection + 1).coerceAtLeast(1),
+                    startMinutes = sectionTimes[session.startSection]?.startMinutes,
+                    endMinutes = sectionTimes[session.endSection]?.endMinutes,
                 )
             }
         }

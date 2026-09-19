@@ -182,4 +182,125 @@ class ScheduleLayoutTest {
         // 课间
         assertThat(ScheduleLayout.currentSectionIndex(sections, 530)).isNull()
     }
+
+    // ---- 边界验证：正常数据「一个时间段只有一门课」 ----
+
+    /** 覆盖 1-12 节的完整节次表 */
+    private val fullSections = (1..12).map { index ->
+        val start = 480 + (index - 1) * 60
+        SectionTemplate(1L, index, start, start + 45)
+    }
+
+    @Test
+    fun `正常情况下一个时间段只有一门课，每个块独占整列宽度`() {
+        val courses = listOf(
+            course("高等数学A", listOf(session(day = 1, start = 1, end = 2, courseId = 1L))),
+            course("数据结构", listOf(session(day = 1, start = 5, end = 7, courseId = 2L))),
+            course("大学英语", listOf(session(day = 2, start = 3, end = 4, courseId = 3L))),
+            course("体育", listOf(session(day = 3, start = 7, end = 8, courseId = 4L))),
+        )
+        val blocks = ScheduleLayout.build(courses, week = 1, totalWeeks, fullSections)
+
+        assertThat(blocks).hasSize(4)
+        assertThat(blocks.all { it.columnCount == 1 }).isTrue()
+        assertThat(blocks.all { it.columnIndex == 0 }).isTrue()
+    }
+
+    @Test
+    fun `同一天不同节次的课互不影响，各自独占整列`() {
+        val courses = listOf(
+            course("A", listOf(session(day = 2, start = 1, end = 2, courseId = 1L))),
+            course("B", listOf(session(day = 2, start = 3, end = 4, courseId = 2L))),
+            course("C", listOf(session(day = 2, start = 5, end = 6, courseId = 3L))),
+        )
+        val blocks = ScheduleLayout.build(courses, week = 1, totalWeeks, fullSections)
+
+        assertThat(blocks).hasSize(3)
+        assertThat(blocks.map { it.startRow }).containsExactly(0, 2, 4).inOrder()
+        assertThat(blocks.all { it.columnCount == 1 }).isTrue()
+    }
+
+    @Test
+    fun `跨节次的课独占整列，不会被拆成多块`() {
+        val blocks = ScheduleLayout.build(
+            listOf(course("数据结构实验", listOf(session(day = 5, start = 5, end = 8)))),
+            week = 1,
+            totalWeeks,
+            fullSections,
+        )
+        val block = blocks.single()
+        assertThat(block.startRow).isEqualTo(4)
+        assertThat(block.rowSpan).isEqualTo(4)
+        assertThat(block.columnCount).isEqualTo(1)
+    }
+
+    @Test
+    fun `块上带有正确的起止时间`() {
+        val block = ScheduleLayout.build(
+            listOf(course("高等数学A", listOf(session(day = 1, start = 1, end = 2)))),
+            week = 1,
+            totalWeeks,
+            fullSections,
+        ).single()
+
+        assertThat(block.startMinutes).isEqualTo(480)   // 第 1 节 08:00
+        assertThat(block.endMinutes).isEqualTo(585)     // 第 2 节结束 09:45
+    }
+
+    @Test
+    fun `节次时间表缺失时时间为 null，但行列定位仍然正确`() {
+        val block = ScheduleLayout.build(
+            listOf(course("A", listOf(session(day = 1, start = 1, end = 2)))),
+            week = 1,
+            totalWeeks,
+        ).single()
+
+        assertThat(block.startMinutes).isNull()
+        assertThat(block.endMinutes).isNull()
+        assertThat(block.startRow).isEqualTo(0)
+        assertThat(block.rowSpan).isEqualTo(2)
+    }
+
+    @Test
+    fun `课程用到的节次超出节次表范围时，时间缺失但块仍然渲染`() {
+        val partial = listOf(SectionTemplate(1L, 1, 480, 525))
+        val block = ScheduleLayout.build(
+            listOf(course("A", listOf(session(day = 1, start = 3, end = 4)))),
+            week = 1,
+            totalWeeks,
+            partial,
+        ).single()
+
+        assertThat(block.startMinutes).isNull()
+        assertThat(block.endMinutes).isNull()
+        assertThat(block.startRow).isEqualTo(2)
+        assertThat(block.rowSpan).isEqualTo(2)
+    }
+
+    @Test
+    fun `AI 重复输出同一门课时退化为并排而不是覆盖或丢失`() {
+        val courses = listOf(
+            course("高等数学A", listOf(session(day = 1, start = 1, end = 2, courseId = 1L))),
+            course("高等数学A", listOf(session(day = 1, start = 1, end = 2, courseId = 2L))),
+        )
+        val blocks = ScheduleLayout.build(courses, week = 1, totalWeeks, fullSections)
+
+        assertThat(blocks).hasSize(2)
+        assertThat(blocks.map { it.columnCount }).containsExactly(2, 2)
+        assertThat(blocks.map { it.course.name }).containsExactly("高等数学A", "高等数学A")
+    }
+
+    @Test
+    fun `一天内课程互不重叠时总块数与时间段数一致`() {
+        val courses = listOf(
+            course("A", listOf(
+                session(day = 4, start = 1, end = 2, courseId = 1L),
+                session(day = 4, start = 5, end = 6, courseId = 1L),
+            )),
+        )
+        val blocks = ScheduleLayout.build(courses, week = 1, totalWeeks, fullSections)
+
+        assertThat(blocks).hasSize(2)
+        assertThat(blocks.all { it.columnCount == 1 }).isTrue()
+    }
 }

@@ -84,7 +84,8 @@ class ScheduleViewModel @Inject constructor(
         val rawWeek = status.week + offset
         val displayWeek = rawWeek.coerceIn(1, term.totalWeeks)
 
-        val blocks = ScheduleLayout.build(courses, displayWeek, term.totalWeeks)
+        // 传入节次时间表，让每个课程块带上具体起止时间（周视图里要显示开始时间）
+        val blocks = ScheduleLayout.build(courses, displayWeek, term.totalWeeks, sections)
 
         // 只在「正在看本周」时高亮今日列与当前节次
         val isThisWeek = displayWeek == status.week && status.phase == TermPhase.IN_TERM

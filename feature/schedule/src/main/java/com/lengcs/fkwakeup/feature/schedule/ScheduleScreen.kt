@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,9 +33,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lengcs.fkwakeup.core.common.ScheduleBlock
@@ -43,7 +46,8 @@ import com.lengcs.fkwakeup.core.designsystem.theme.FkwakeupTheme
 import com.lengcs.fkwakeup.core.model.SectionTemplate
 
 private val SECTION_COLUMN_WIDTH = 44.dp
-private val ROW_HEIGHT = 56.dp
+/** 一格要放下「开始时间 + 课程名 + 地点」三行，56dp 太挤，放宽到 64dp */
+private val ROW_HEIGHT = 64.dp
 private val WEEKDAYS = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
 
 @Composable
@@ -106,42 +110,67 @@ private fun ScheduleTopBar(
     val nextDesc = stringResource(R.string.schedule_next_cd)
     val todayDesc = stringResource(R.string.schedule_today_cd)
 
+    val weekText = buildString {
+        append(stringResource(R.string.schedule_week_label, displayWeek))
+        if (isCurrentWeek) append(" · ").append(stringResource(R.string.schedule_week_current))
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = termName ?: stringResource(R.string.schedule_title),
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        // 左侧文字区吃掉剩余空间，按钮区保持固定宽度，互不挤压
+        Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(start = 12.dp),
-        )
-        TextButton(onClick = onManage) { Text("管理", style = MaterialTheme.typography.labelMedium) }
-        Text(
-            text = buildString {
-                append(stringResource(R.string.schedule_week_label, displayWeek))
-                if (isCurrentWeek) append(" · ").append(stringResource(R.string.schedule_week_current))
-            },
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        // 图标只有符号，必须给读屏软件补语义描述
-        IconButton(
-            onClick = onPrev,
-            modifier = Modifier.semantics { contentDescription = prevDesc },
-        ) { Text("<", textAlign = TextAlign.Center) }
-        IconButton(
-            onClick = onToday,
-            modifier = Modifier.semantics { contentDescription = todayDesc },
-        ) { Text("·") }
-        IconButton(
-            onClick = onNext,
-            modifier = Modifier.semantics { contentDescription = nextDesc },
-        ) { Text(">") }
+        ) {
+            Text(
+                text = termName ?: stringResource(R.string.schedule_title),
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = weekText,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        TextButton(
+            onClick = onManage,
+            modifier = Modifier.height(36.dp),
+            contentPadding = PaddingValues(horizontal = 6.dp),
+        ) {
+            Text("管理", style = MaterialTheme.typography.labelSmall)
+        }
+
+        // 紧凑的周切换按钮；「回到本周」只在非本周时出现，避免本周时挤占文字区
+        NavButton(text = "<", desc = prevDesc, onClick = onPrev)
+        if (!isCurrentWeek) {
+            NavButton(text = "·", desc = todayDesc, onClick = onToday)
+        }
+        NavButton(text = ">", desc = nextDesc, onClick = onNext)
+    }
+}
+
+@Composable
+private fun NavButton(
+    text: String,
+    desc: String,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(36.dp)
+            .semantics { contentDescription = desc },
+    ) {
+        Text(text, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
     }
 }
 
@@ -298,22 +327,37 @@ private fun CourseBlockCard(
         color = baseColor.copy(alpha = baseColor.alpha * alpha),
         contentColor = Color.White,
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 3.dp),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
-        ) {
+        Column(modifier = Modifier.padding(horizontal = 3.dp, vertical = 2.dp)) {
+            // 1. 开始时间
+            Text(
+                text = block.startMinutes?.let { formatMinutes(it) }
+                    ?: "第${block.session.startSection}节",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                maxLines = 1,
+                color = Color.White.copy(alpha = 0.85f),
+            )
+            // 2. 课程名：给足行数，尽量不截断
             Text(
                 text = block.course.name,
-                style = MaterialTheme.typography.labelSmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 13.sp,
+                ),
+                maxLines = 3,
+                overflow = TextOverflow.Clip,
             )
-            block.session.location?.let { location ->
+            // 3. 上课地点
+            if (block.session.location != null) {
                 Text(
-                    text = "@$location",
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    text = "@${block.session.location}",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 9.sp,
+                        lineHeight = 11.sp,
+                    ),
+                    maxLines = 2,
+                    overflow = TextOverflow.Clip,
+                    color = Color.White.copy(alpha = 0.85f),
                 )
             }
         }
