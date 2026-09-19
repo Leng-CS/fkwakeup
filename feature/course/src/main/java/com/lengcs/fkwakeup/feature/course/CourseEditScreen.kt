@@ -43,6 +43,7 @@ import com.lengcs.fkwakeup.core.model.Course
 import com.lengcs.fkwakeup.core.model.CourseSession
 import com.lengcs.fkwakeup.core.model.Term
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,6 +67,7 @@ class CourseEditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val courseRepository: CourseRepository,
     private val termRepository: com.lengcs.fkwakeup.core.database.repository.TermRepository,
+    @ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
     private val courseId: Long = savedStateHandle.get<String>("courseId")?.toLongOrNull() ?: 0L
@@ -173,6 +175,8 @@ class CourseEditViewModel @Inject constructor(
                     )
                 },
             )
+            // 写库后主动刷新小组件，否则要等 15 分钟兜底
+            com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler.refreshNow(appContext)
             _messages.trySend("已保存")
             onDone()
         }

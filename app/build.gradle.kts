@@ -64,4 +64,5 @@ dependencies {
     implementation(project(":feature:importexport"))
     implementation(project(":feature:schedule"))
     implementation(project(":feature:course"))
+    implementation(project(":widget:glance"))
 }

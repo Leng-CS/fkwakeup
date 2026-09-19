@@ -34,7 +34,9 @@ import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.datastore.SettingsRepository
 import com.lengcs.fkwakeup.core.model.CourseWithSessions
 import com.lengcs.fkwakeup.core.model.Term
+import com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +50,7 @@ class CourseManageViewModel @Inject constructor(
     private val termRepository: TermRepository,
     private val courseRepository: CourseRepository,
     private val settingsRepository: SettingsRepository,
+    @ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
     private val _term = MutableStateFlow<Term?>(null)
@@ -74,6 +77,7 @@ class CourseManageViewModel @Inject constructor(
     fun deleteCourse(course: CourseWithSessions) {
         viewModelScope.launch {
             courseRepository.deleteCourse(course.course)
+            WidgetRefreshScheduler.refreshNow(appContext)
             _messages.trySend("已删除「${course.course.name}」")
         }
     }

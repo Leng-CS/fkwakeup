@@ -16,6 +16,7 @@ import com.lengcs.fkwakeup.core.importer.model.MergedCourse
 import com.lengcs.fkwakeup.core.model.Course
 import com.lengcs.fkwakeup.core.model.CourseSession
 import com.lengcs.fkwakeup.core.model.DefaultSections
+import com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
@@ -226,6 +227,9 @@ class ImportViewModel @Inject constructor(
             importedTermId = termId
             isImporting = false
             stage = ImportStage.Done
+
+            // 写库后主动刷新小组件，否则要等 15 分钟兜底
+            WidgetRefreshScheduler.refreshNow(appContext)
         }
     }
 

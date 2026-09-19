@@ -34,6 +34,7 @@ dependencies {
     implementation(project(":core:exporter"))
     implementation(project(":core:database"))
     implementation(project(":core:datastore"))
+    implementation(project(":widget:glance"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
