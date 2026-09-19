@@ -6,6 +6,9 @@
     <string name="schedule_prev_week">上一周</string>
     <string name="schedule_next_week">下一周</string>
     <string name="schedule_today">回到本周</string>
+    <string name="schedule_prev_cd">切换到上一周</string>
+    <string name="schedule_next_cd">切换到下一周</string>
+    <string name="schedule_today_cd">回到本周</string>
     <string name="schedule_empty_title">还没有课表</string>
     <string name="schedule_empty_action">导入课表</string>
     <string name="schedule_no_term">还没有学期，先导入一份课表</string>

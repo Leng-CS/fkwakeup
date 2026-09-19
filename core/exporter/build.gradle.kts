@@ -31,4 +31,6 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
+    // 往返测试：导出后再用导入链路解析回来
+    testImplementation(project(":core:importer"))
 }

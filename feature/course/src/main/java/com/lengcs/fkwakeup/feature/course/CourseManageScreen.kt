@@ -23,8 +23,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -32,7 +35,9 @@ import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.datastore.SettingsRepository
+import com.lengcs.fkwakeup.core.exporter.TimetableExporter
 import com.lengcs.fkwakeup.core.model.CourseWithSessions
+import com.lengcs.fkwakeup.core.model.SectionTemplate
 import com.lengcs.fkwakeup.core.model.Term
 import com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -59,6 +64,9 @@ class CourseManageViewModel @Inject constructor(
     private val _courses = MutableStateFlow<List<CourseWithSessions>>(emptyList())
     val courses: StateFlow<List<CourseWithSessions>> = _courses
 
+    private val _sections = MutableStateFlow<List<SectionTemplate>>(emptyList())
+    val sections: StateFlow<List<SectionTemplate>> = _sections
+
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
 
@@ -70,8 +78,16 @@ class CourseManageViewModel @Inject constructor(
             if (termId == null) return@launch
             val term = termRepository.getTerm(termId) ?: return@launch
             _term.value = term
-            courseRepository.observeCourses(termId).collect { _courses.value = it }
+
+            launch { courseRepository.observeCourses(termId).collect { _courses.value = it } }
+            launch { termRepository.observeSections(termId).collect { _sections.value = it } }
         }
+    }
+
+    /** 生成可分享的课表 JSON；没有学期时返回 null */
+    fun buildExportJson(): String? {
+        val term = _term.value ?: return null
+        return TimetableExporter.export(term, _sections.value, _courses.value)
     }
 
     fun deleteCourse(course: CourseWithSessions) {
@@ -94,6 +110,8 @@ fun CourseManageScreen(
     modifier: Modifier = Modifier,
     viewModel: CourseManageViewModel = hiltViewModel(),
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val term by viewModel.term.collectAsState()
     val courses by viewModel.courses.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -109,6 +127,9 @@ fun CourseManageScreen(
                 title = { Text(stringResource(R.string.course_manage_title)) },
                 navigationIcon = { TextButton(onClick = onBack) { Text("<") } },
                 actions = {
+                    TextButton(onClick = { exportTimetable(context, viewModel, scope, snackbarHostState) }) {
+                        Text(stringResource(R.string.course_export))
+                    }
                     TextButton(onClick = onManageTerms) { Text(stringResource(R.string.term_manage_title)) }
                     TextButton(onClick = onManageSections) { Text(stringResource(R.string.sections_title)) }
                 },
@@ -154,6 +175,32 @@ fun CourseManageScreen(
             }
         }
     }
+}
+
+/** 通过系统分享面板输出课表 JSON */
+private fun exportTimetable(
+    context: android.content.Context,
+    viewModel: CourseManageViewModel,
+    scope: kotlinx.coroutines.CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+) {
+    val json = viewModel.buildExportJson()
+    if (json == null) {
+        scope.launch {
+            snackbarHostState.showSnackbar(context.getString(R.string.export_empty))
+        }
+        return
+    }
+
+    val subject = context.getString(R.string.export_subject, viewModel.term.value?.name.orEmpty())
+    val sendIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "application/json"
+        putExtra(android.content.Intent.EXTRA_TEXT, json)
+        putExtra(android.content.Intent.EXTRA_SUBJECT, subject)
+    }
+    context.startActivity(
+        android.content.Intent.createChooser(sendIntent, context.getString(R.string.export_chooser_title)),
+    )
 }
 
 @Composable

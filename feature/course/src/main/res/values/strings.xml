@@ -53,6 +53,12 @@
     <string name="sections_saved">已保存</string>
     <string name="sections_invalid">第 %1$d 节时间有误（结束需晚于开始）</string>
 
+    <!-- 导出 -->
+    <string name="course_export">导出</string>
+    <string name="export_chooser_title">导出课表</string>
+    <string name="export_subject">课表-%1$s</string>
+    <string name="export_empty">还没有课表可以导出</string>
+
     <string name="action_remove">删除</string>
     <string name="action_cancel">取消</string>
     <string name="action_confirm">确定</string>

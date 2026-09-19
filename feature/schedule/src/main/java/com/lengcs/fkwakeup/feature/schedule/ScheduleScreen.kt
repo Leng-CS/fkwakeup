@@ -29,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -100,6 +102,10 @@ private fun ScheduleTopBar(
     onToday: () -> Unit,
     onManage: () -> Unit,
 ) {
+    val prevDesc = stringResource(R.string.schedule_prev_cd)
+    val nextDesc = stringResource(R.string.schedule_next_cd)
+    val todayDesc = stringResource(R.string.schedule_today_cd)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -123,9 +129,19 @@ private fun ScheduleTopBar(
             },
             style = MaterialTheme.typography.bodyMedium,
         )
-        IconButton(onClick = onPrev) { Text("<", textAlign = TextAlign.Center) }
-        IconButton(onClick = onToday) { Text("·") }
-        IconButton(onClick = onNext) { Text(">") }
+        // 图标只有符号，必须给读屏软件补语义描述
+        IconButton(
+            onClick = onPrev,
+            modifier = Modifier.semantics { contentDescription = prevDesc },
+        ) { Text("<", textAlign = TextAlign.Center) }
+        IconButton(
+            onClick = onToday,
+            modifier = Modifier.semantics { contentDescription = todayDesc },
+        ) { Text("·") }
+        IconButton(
+            onClick = onNext,
+            modifier = Modifier.semantics { contentDescription = nextDesc },
+        ) { Text(">") }
     }
 }
 
