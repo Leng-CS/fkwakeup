@@ -119,8 +119,10 @@ fun ScheduleScreen(
     editingBlock?.let { block ->
         CourseBlockEditSheet(
             block = block,
+            totalWeeks = state.term?.totalWeeks ?: 18,
+            sectionCount = state.sections.size.coerceAtLeast(1),
             onDismiss = { editingBlock = null },
-            onSave = { name, teacher, color, dow, from, to, spec, place ->
+            onSave = { name, teacher, color, dow, from, to, weeks, place ->
                 viewModel.saveBlockEdits(
                     block = block,
                     name = name,
@@ -129,7 +131,7 @@ fun ScheduleScreen(
                     dayOfWeek = dow,
                     startSection = from,
                     endSection = to,
-                    weekSpec = spec,
+                    weeks = weeks,
                     location = place,
                     onDone = { editingBlock = null },
                 )

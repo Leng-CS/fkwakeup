@@ -37,10 +37,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lengcs.fkwakeup.core.common.WeekSpecFormatter
 import com.lengcs.fkwakeup.core.common.WeekSpecParser
+import com.lengcs.fkwakeup.core.designsystem.picker.LabeledWheel
+import com.lengcs.fkwakeup.core.designsystem.picker.WeekPicker
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
 import com.lengcs.fkwakeup.core.model.Course
 import com.lengcs.fkwakeup.core.model.CourseSession
+import com.lengcs.fkwakeup.core.model.SectionTemplate
 import com.lengcs.fkwakeup.core.model.Term
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -52,12 +56,16 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** 可编辑的时间段 */
+/**
+ * 可编辑的时间段。
+ *
+ * 周次用**集合**表示（UI 是点选），保存时再由 `WeekSpecFormatter` 转成表达式。
+ */
 data class EditableSession(
     val dayOfWeek: Int = 1,
     val startSection: Int = 1,
     val endSection: Int = 2,
-    val weekSpec: String = "1-16",
+    val weeks: Set<Int> = emptySet(),
     val location: String? = null,
     val note: String? = null,
 )
@@ -81,6 +89,9 @@ class CourseEditViewModel @Inject constructor(
     private val _initial = MutableStateFlow<CourseEditInitial?>(null)
     val initial: StateFlow<CourseEditInitial?> = _initial
 
+    private val _sections = MutableStateFlow<List<SectionTemplate>>(emptyList())
+    val sections: StateFlow<List<SectionTemplate>> = _sections
+
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
 
@@ -97,6 +108,8 @@ class CourseEditViewModel @Inject constructor(
         viewModelScope.launch {
             val term = termRepository.observeTerms().first().firstOrNull()
             _term.value = term
+            // 节次表用于滚轮的取值范围（1..节次数）
+            _sections.value = term?.let { termRepository.getSections(it.id) } ?: emptyList()
             if (courseId == 0L) {
                 _initial.value = CourseEditInitial("", "", "", emptyList())
             } else {
@@ -113,7 +126,8 @@ class CourseEditViewModel @Inject constructor(
                                 dayOfWeek = it.dayOfWeek,
                                 startSection = it.startSection,
                                 endSection = it.endSection,
-                                weekSpec = it.weekSpec,
+                                weeks = WeekSpecParser.parseOrNull(it.weekSpec, term?.totalWeeks ?: 18)
+                                    ?: emptySet(),
                                 location = it.location,
                                 note = it.note,
                             )
@@ -139,11 +153,11 @@ class CourseEditViewModel @Inject constructor(
                 return@launch
             }
 
-            // 周次表达式校验：错的直接跳过，避免写坏数据导致整页崩溃
             val totalWeeks = _term.value?.totalWeeks ?: 18
-            val valid = sessions.filter { WeekSpecParser.parseOrNull(it.weekSpec, totalWeeks) != null }
+            // 没选周次的时间段直接跳过，避免写坏数据导致周视图崩溃
+            val valid = sessions.filter { it.weeks.isNotEmpty() }
             if (valid.size != sessions.size) {
-                _messages.trySend("有 ${sessions.size - valid.size} 个时间段周次无法识别，已跳过")
+                _messages.trySend("有 ${sessions.size - valid.size} 个时间段未选择周次，已跳过")
             }
 
             val course = Course(
@@ -169,7 +183,7 @@ class CourseEditViewModel @Inject constructor(
                         dayOfWeek = it.dayOfWeek,
                         startSection = it.startSection,
                         endSection = it.endSection,
-                        weekSpec = it.weekSpec,
+                        weekSpec = WeekSpecFormatter.format(it.weeks, totalWeeks),
                         location = it.location,
                         note = it.note,
                     )
@@ -227,6 +241,11 @@ fun CourseEditScreen(
     var teacher by remember { mutableStateOf(TextFieldValue(start.teacher)) }
     var note by remember { mutableStateOf(TextFieldValue(start.note)) }
     val sessions = remember { mutableStateListOf<EditableSession>().apply { addAll(start.sessions) } }
+
+    val totalWeeks by viewModel.term.collectAsState()
+    val sections by viewModel.sections.collectAsState()
+    val totalWeekCount = totalWeeks?.totalWeeks ?: 18
+    val sectionCount = sections.size.coerceAtLeast(1)
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -286,6 +305,8 @@ fun CourseEditScreen(
                 SessionEditor(
                     index = index,
                     session = session,
+                    totalWeeks = totalWeekCount,
+                    sectionCount = sectionCount,
                     onChange = { sessions[index] = it },
                     onRemove = { sessions.removeAt(index) },
                 )
@@ -319,10 +340,17 @@ fun CourseEditScreen(
     }
 }
 
+private fun sectionItems(sectionCount: Int): List<String> =
+    (1..sectionCount.coerceAtLeast(1)).map { "$it" }
+
+private val WEEKDAY_ITEMS = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
+
 @Composable
 private fun SessionEditor(
     index: Int,
     session: EditableSession,
+    totalWeeks: Int,
+    sectionCount: Int,
     onChange: (EditableSession) -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -331,32 +359,54 @@ private fun SessionEditor(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                NumberField(
+            // 与周视图编辑抽屉保持一致：滚轮选周几 / 起止节次
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                LabeledWheel(
                     label = stringResource(R.string.edit_day),
-                    value = session.dayOfWeek,
-                    onValueChange = { onChange(session.copy(dayOfWeek = it)) },
+                    items = WEEKDAY_ITEMS,
+                    selectedIndex = (session.dayOfWeek - 1).coerceIn(0, 6),
+                    onSelectedChange = { onChange(session.copy(dayOfWeek = it + 1)) },
                     modifier = Modifier.weight(1f),
                 )
-                NumberField(
+                LabeledWheel(
                     label = "起",
-                    value = session.startSection,
-                    onValueChange = { onChange(session.copy(startSection = it)) },
+                    items = sectionItems(sectionCount),
+                    selectedIndex = (session.startSection - 1).coerceIn(0, sectionCount - 1),
+                    onSelectedChange = { onChange(session.copy(startSection = it + 1)) },
                     modifier = Modifier.weight(1f),
                 )
-                NumberField(
+                LabeledWheel(
                     label = "止",
-                    value = session.endSection,
-                    onValueChange = { onChange(session.copy(endSection = it)) },
+                    items = sectionItems(sectionCount),
+                    selectedIndex = (session.endSection - 1).coerceIn(0, sectionCount - 1),
+                    onSelectedChange = { onChange(session.copy(endSection = it + 1)) },
                     modifier = Modifier.weight(1f),
                 )
             }
-            OutlinedTextField(
-                value = session.weekSpec,
-                onValueChange = { onChange(session.copy(weekSpec = it)) },
-                label = { Text(stringResource(R.string.edit_weeks)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+
+            Text(stringResource(R.string.edit_weeks), style = MaterialTheme.typography.labelLarge)
+            WeekPicker(
+                selectedWeeks = session.weeks,
+                totalWeeks = totalWeeks,
+                onToggleWeek = { week ->
+                    val next = if (week in session.weeks) {
+                        session.weeks - week
+                    } else {
+                        session.weeks + week
+                    }
+                    onChange(session.copy(weeks = next))
+                },
+                onSelectAll = { onChange(session.copy(weeks = (1..totalWeeks).toSet())) },
+                onSelectOdd = {
+                    onChange(session.copy(weeks = (1..totalWeeks).filter { it % 2 == 1 }.toSet()))
+                },
+                onSelectEven = {
+                    onChange(session.copy(weeks = (1..totalWeeks).filter { it % 2 == 0 }.toSet()))
+                },
+                onClear = { onChange(session.copy(weeks = emptySet())) },
             )
             OutlinedTextField(
                 value = session.location.orEmpty(),

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.common.CurrentWeekCalculator
 import com.lengcs.fkwakeup.core.common.ScheduleBlock
 import com.lengcs.fkwakeup.core.common.ScheduleLayout
+import com.lengcs.fkwakeup.core.common.WeekSpecFormatter
 import com.lengcs.fkwakeup.core.common.WeekSpecParser
 import com.lengcs.fkwakeup.core.common.TermPhase
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
@@ -134,7 +135,7 @@ class ScheduleViewModel @Inject constructor(
         dayOfWeek: Int,
         startSection: Int,
         endSection: Int,
-        weekSpec: String,
+        weeks: Set<Int>,
         location: String?,
         onDone: () -> Unit,
     ) {
@@ -146,9 +147,15 @@ class ScheduleViewModel @Inject constructor(
             }
 
             val totalWeeks = _uiState.value.term?.totalWeeks ?: 18
-            val trimmedSpec = weekSpec.trim()
+            if (weeks.isEmpty()) {
+                _messages.trySend("请至少选择一周")
+                return@launch
+            }
+
+            // UI 是点选周次，这里转回存储用的表达式
+            val trimmedSpec = WeekSpecFormatter.format(weeks, totalWeeks)
             if (WeekSpecParser.parseOrNull(trimmedSpec, totalWeeks) == null) {
-                _messages.trySend("周次「$trimmedSpec」无法识别")
+                _messages.trySend("所选周次无法生成合法表达式")
                 return@launch
             }
 
