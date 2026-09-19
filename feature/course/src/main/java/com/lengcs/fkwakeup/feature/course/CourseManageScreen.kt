@@ -33,8 +33,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
+import com.lengcs.fkwakeup.core.database.repository.CurrentTermProvider
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
-import com.lengcs.fkwakeup.core.datastore.SettingsRepository
 import com.lengcs.fkwakeup.core.exporter.TimetableExporter
 import com.lengcs.fkwakeup.core.model.CourseWithSessions
 import com.lengcs.fkwakeup.core.model.SectionTemplate
@@ -45,7 +45,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -54,7 +56,7 @@ import javax.inject.Inject
 class CourseManageViewModel @Inject constructor(
     private val termRepository: TermRepository,
     private val courseRepository: CourseRepository,
-    private val settingsRepository: SettingsRepository,
+    private val currentTermProvider: CurrentTermProvider,
     @ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
@@ -72,17 +74,33 @@ class CourseManageViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val settings = settingsRepository.settings.first()
-            val termId = settings.currentTermId.takeIf { it > 0 }
-                ?: termRepository.observeTerms().first().firstOrNull()?.id
-            if (termId == null) return@launch
-            val term = termRepository.getTerm(termId) ?: return@launch
-            _term.value = term
-
-            launch { courseRepository.observeCourses(termId).collect { _courses.value = it } }
-            launch { termRepository.observeSections(termId).collect { _sections.value = it } }
+            // 当前学期是流：切学期后自动重新订阅课程与节次表，无需重启应用
+            currentTermProvider.observeCurrentTerm()
+                .flatMapLatest { term ->
+                    if (term == null) {
+                        flowOf(ManageData())
+                    } else {
+                        combine(
+                            courseRepository.observeCourses(term.id),
+                            termRepository.observeSections(term.id),
+                        ) { courses, sections ->
+                            ManageData(term, courses, sections)
+                        }
+                    }
+                }
+                .collect { data ->
+                    _term.value = data.term
+                    _courses.value = data.courses
+                    _sections.value = data.sections
+                }
         }
     }
+
+    private data class ManageData(
+        val term: Term? = null,
+        val courses: List<CourseWithSessions> = emptyList(),
+        val sections: List<SectionTemplate> = emptyList(),
+    )
 
     /** 生成可分享的课表 JSON；没有学期时返回 null */
     fun buildExportJson(): String? {

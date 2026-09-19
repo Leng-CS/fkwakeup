@@ -37,11 +37,15 @@ import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.datastore.SettingsRepository
 import com.lengcs.fkwakeup.core.model.Term
+import com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -52,6 +56,7 @@ import javax.inject.Inject
 class TermManageViewModel @Inject constructor(
     private val termRepository: TermRepository,
     private val settingsRepository: SettingsRepository,
+    @ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
     private val _terms = MutableStateFlow<List<Term>>(emptyList())
@@ -68,7 +73,11 @@ class TermManageViewModel @Inject constructor(
             termRepository.observeTerms(includeArchived = true).collect { _terms.value = it }
         }
         viewModelScope.launch {
-            _currentTermId.value = settingsRepository.settings.first().currentTermId
+            // 持续跟随，而不是只读一次 —— 否则删除当前学期后「当前」标记不会更新
+            settingsRepository.settings
+                .map { it.currentTermId }
+                .distinctUntilChanged()
+                .collect { _currentTermId.value = it }
         }
     }
 
@@ -117,6 +126,8 @@ class TermManageViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.setCurrentTerm(term.id)
             _currentTermId.value = term.id
+            // 小组件也跟着切，否则桌面上还停留在上个学期
+            WidgetRefreshScheduler.refreshNow(appContext)
             _messages.trySend("已切换到「${term.name}」")
         }
     }

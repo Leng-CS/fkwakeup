@@ -7,8 +7,8 @@ import com.lengcs.fkwakeup.core.common.ScheduleBlock
 import com.lengcs.fkwakeup.core.common.ScheduleLayout
 import com.lengcs.fkwakeup.core.common.TermPhase
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
+import com.lengcs.fkwakeup.core.database.repository.CurrentTermProvider
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
-import com.lengcs.fkwakeup.core.datastore.SettingsRepository
 import com.lengcs.fkwakeup.core.model.CourseWithSessions
 import com.lengcs.fkwakeup.core.model.SectionTemplate
 import com.lengcs.fkwakeup.core.model.Term
@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -42,7 +43,7 @@ data class ScheduleUiState(
 class ScheduleViewModel @Inject constructor(
     private val termRepository: TermRepository,
     private val courseRepository: CourseRepository,
-    private val settingsRepository: SettingsRepository,
+    private val currentTermProvider: CurrentTermProvider,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScheduleUiState())
@@ -52,25 +53,26 @@ class ScheduleViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val termId = settingsRepository.settings.first().currentTermId
-                .takeIf { it > 0 }
-                ?: termRepository.observeTerms().first().firstOrNull()?.id
-            if (termId == null) return@launch
-            observeSchedule(termId)
+            // 当前学期本身是流：切学期后会自动重新订阅该学期的课程与节次表
+            combine(
+                currentTermProvider.observeCurrentTerm(),
+                weekOffset,
+            ) { term, offset -> term to offset }
+                .flatMapLatest { (term, offset) ->
+                    if (term == null) {
+                        flowOf(ScheduleUiState())
+                    } else {
+                        val today = LocalDate.now()
+                        combine(
+                            courseRepository.observeCourses(term.id),
+                            termRepository.observeSections(term.id),
+                        ) { courses, sections ->
+                            buildState(term, courses, sections, today, offset)
+                        }
+                    }
+                }
+                .collect { _uiState.value = it }
         }
-    }
-
-    private suspend fun observeSchedule(termId: Long) {
-        val term = termRepository.getTerm(termId) ?: return
-        val today = LocalDate.now()
-
-        combine(
-            courseRepository.observeCourses(termId),
-            termRepository.observeSections(termId),
-            weekOffset,
-        ) { courses, sections, offset ->
-            buildState(term, courses, sections, today, offset)
-        }.collect { _uiState.value = it }
     }
 
     private fun buildState(
