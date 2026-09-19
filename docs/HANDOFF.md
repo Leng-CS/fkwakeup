@@ -51,6 +51,8 @@ docs/timetable-sample.json     导入格式示例
 
 **Issue #1–#9 对应 Milestone M0–M8**，每个 Issue 里写了目标 / 范围 / 验收标准 / 参考章节。开始某个里程碑前先读对应 Issue。
 
+> 之后的迭代（微调 / Bug / 新需求）归 **M9 里程碑**，见 Issue #10 起。所有变更汇总在 `docs/CHANGELOG.md`。
+
 ---
 
 ## 3. 必读顺序
@@ -58,7 +60,8 @@ docs/timetable-sample.json     导入格式示例
 1. **`AGENTS.md`** —— 项目约定、目录结构、编码规范、禁止清单
 2. **`docs/project-blueprint.md` 第 4 章** —— 数据模型（Kotlin 领域模型 + Room 表结构 + 周次表达式语法）
 3. **第 5 章** —— 导入格式 v1.0（JSON Schema、字段表、校验、五级容错流水线）
-4. **第 9、10 章** —— 难度评估、M0–M8 里程碑与验收标准
+4. **第 9、10 章** —— 难度评估、M0–M9 里程碑与验收标准、AI 协作与变更流程（10.5 节）
+5. `docs/CHANGELOG.md` —— 最近改了什么（微调 / Bug / 需求）
 5. **`docs/recognition-prompt.md`** —— App 内置提示词正文 + 全部 UI 文案（`strings.xml` 与 `res/raw` 的唯一来源）
 
 **不要跳过第 2、3 步直接写 UI。** 数据契约一旦改动，UI 全部返工。
@@ -85,27 +88,31 @@ docs/timetable-sample.json     导入格式示例
 
 ## 5. 当前进度与下一步
 
-**当前：M0 未开始。** 仓库里只有文档，没有任何 Android 代码。
+> 本节只记录**接手时该看什么**。每次改动的详情在 `docs/CHANGELOG.md`，按 Issue 号追踪。
 
-### M0 任务清单（Issue #1）
+### 状态
 
-目标：Gradle 工程骨架、模块划分、Hilt、Room 建表、Material3 主题。
+| 里程碑 | 状态 |
+|---|---|
+| M0–M7 | ✅ 已完成并合入 main（工程骨架 → 数据层 → 导入链路 → 导入 UI → 周视图 → 课程与学期管理 → 小组件 → 导出备份） |
+| M8（P1 提醒通知 + 冲突检测） | ⏸ 暂缓，未开始 |
+| M9（MVP 后打磨与问题修复） | 🔄 进行中 |
 
-建议顺序：
+M9 当前工作项：
 
-1. 建立 Gradle 工程与版本目录（技术栈版本见主文档 6.1）
-2. 按主文档 6.2 建模块与目录结构
-3. `core/model/` 领域模型（纯 Kotlin，无 Android 依赖）—— 照抄第 4.1 节
-4. `core/database/` Room entities + DAO —— 照抄第 4.2 节，**务必调用 `enableMultiInstanceInvalidation()`**
-5. Hilt DI 模块
-6. Material3 主题 + 课程调色板
-7. 空白 MainActivity 可启动
+- **#10** [微调] 周视图顶栏与课程块信息展示 → 已合入 main
+- **#11** [Bug] 切换学期后不刷新 → 已合入 main
+- **#12** [需求] 课程块点击编辑 + 自定义颜色 → **待合入 main**
 
-### M0 验收标准
+### 接手后先看这三件事
 
-- 编译通过
-- 数据库检查器可见 4 张表：`terms` / `section_templates` / `courses` / `course_sessions`
-- 空白主页可启动
+1. `docs/CHANGELOG.md` —— 最近改了什么
+2. 对应 Issue 的正文 —— 背景 / 做了什么 / 验证 / 分支与 commit
+3. 主文档第 10.5 节 —— 变更流程（建 Issue → 归 Milestone → 分支 → 更新文档 → 记 CHANGELOG）
+
+### 新增需求或改动的流程
+
+一律走五步，详见 `AGENTS.md`「变更流程」与主文档 10.5 节。**不要直接提交到 main。**
 
 ---
 
