@@ -39,6 +39,7 @@ data class ScheduleUiState(
     val isEmpty: Boolean = true,
 )
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ScheduleViewModel @Inject constructor(
     private val termRepository: TermRepository,
