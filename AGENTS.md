@@ -34,11 +34,16 @@ app/                    Application + MainActivity + 导航宿主
     prompt_repair.txt   修复版提示词，对应第三节，含 {ERRORS} / {ORIGINAL}
   ShareImportActivity   ACTION_SEND text/plain 分享入口
 core/model/             领域模型（纯 Kotlin，无 Android 依赖）
-core/common/            WeekSpecParser、ScheduleLayout（网格布局算法）、CourseColorPalette（色板，纯整数）
+core/common/            WeekSpecParser / WeekSpecFormatter（周次表达式 ⇄ 周集合）
+                        ScheduleLayout（网格布局算法）、CourseColorPalette（色板，纯整数）
+                        WheelScrollGuard（★ 滚轮回写的首帧防护，纯逻辑，见 CHANGELOG #17）
 core/database/          Room entities / dao / repository
   repository/CurrentTermProvider   ★「当前学期」的响应式来源，页面切换学期靠它刷新
 core/importer/          ★ 导入解析：Extractor / Normalizer / Validator
 core/exporter/          导出为 campus-timetable v1.0（要求可往返）
+core/designsystem/      配色与通用组件
+  picker/WheelPicker    滚轮选择器（周几 / 起止节）
+  picker/WeekPicker     周次点选网格
 feature/schedule/       周视图主页 + 课程块编辑抽屉（CourseBlockEditSheet）
 feature/course/         课程管理与编辑 + 学期管理 + 节次时间表
 feature/importexport/   导入页 + 预览纠偏页
@@ -89,6 +94,8 @@ widget/glance/          Glance 小组件 + 更新调度
 
 - **M0–M7 已完成并合入 main**：工程骨架、数据层、导入链路、导入 UI、周视图、课程与学期管理、小组件、导出备份
 - **M8（P1，提醒通知 + 冲突检测）暂缓**，未开始
-- **M9（MVP 后打磨与问题修复）进行中**：#10 微调、#11 Bug 修复已合入 main；#12 课程块编辑 + 自定义颜色**待合入**
+- **M9（MVP 后打磨与问题修复）进行中**：#10–#19 已全部实现并验证；#10、#11 已合入 main，其余待合入
+- **首个 demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，附调试卷 APK
+- 单元测试 **125 个**，全绿
 
 开始编码前先看 `docs/CHANGELOG.md` 了解最近改了什么，再确认当前该做哪个 Issue。

@@ -14,16 +14,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.lengcs.fkwakeup.core.common.WheelScrollGuard
 import kotlin.math.abs
 
 /**
@@ -55,21 +53,28 @@ fun WheelPicker(
         }
     }
 
-    // 滚动停止后，取离中心最近的一项作为选中值
+    // 滚动结束后，取离中心最近的一项作为选中值。
+    //
+    // 判定「是否该回写」交给 WheelScrollGuard —— 不能只判断 `!isScrollInProgress`：
+    // 首次组合时它就是 false，会被误当成一次「滚动已结束」，而此刻视口中心恰好
+    // 落在第 0 项上，于是回调 onSelectedChange(0)，把外部传入的选中值静默重置。
+    // 详见 core:common 的 WheelScrollGuard。
+    val scrollGuard = remember { WheelScrollGuard() }
     LaunchedEffect(state.isScrollInProgress) {
-        if (!state.isScrollInProgress) {
-            val info = state.layoutInfo
-            if (info.visibleItemsInfo.isNotEmpty()) {
-                val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
-                val nearest = info.visibleItemsInfo.minByOrNull { item ->
-                    abs((item.offset + item.size / 2) - center)
-                }
-                nearest?.index
-                    ?.coerceIn(0, items.lastIndex)
-                    ?.takeIf { it != selectedIndex }
-                    ?.let { onSelectedChange(it) }
-            }
+        val info = state.layoutInfo
+        val nearestIndex = if (info.visibleItemsInfo.isNotEmpty()) {
+            val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+            info.visibleItemsInfo
+                .minByOrNull { item -> abs((item.offset + item.size / 2) - center) }
+                ?.index
+        } else {
+            null
         }
+
+        scrollGuard
+            .onScrollStateChanged(state.isScrollInProgress, nearestIndex, selectedIndex)
+            ?.coerceIn(0, items.lastIndex)
+            ?.let { onSelectedChange(it) }
     }
 
     Box(

@@ -221,6 +221,12 @@
 - 删除的是**时间段**，不是整门课，需二次确认；课程本身保留
 - 校验不通过（名称为空、周次无法解析）时只提示、**不改数据**
 - 起止节次写反了自动纠正，比报错更省事
+- **操作区固定在抽屉右上角，用图标而非文字**：保存（软盘）/ 删除（红色垃圾桶）/ 取消（叉）。
+  图标为**自绘 VectorDrawable**，不引入 `material-icons-extended`；每个图标必须有 `contentDescription`
+
+> **布局教训**：抽屉操作区**不要**用 `Row` + `Text(Modifier.weight(1f))` + `IconButton` 做「左标题右按钮」——
+> 实测 `weight` 不会把剩余宽度让出来，`Row` 被压成标题文字宽度，`IconButton` 变 0 宽，
+> UI 树里能查到节点却完全不可见。改用 `Box` + `align(CenterStart)` / `align(CenterEnd)` 嵌套 `Row`。
 
 ### FR-10 自定义课块颜色（P0）
 
@@ -235,6 +241,24 @@
 > **实现约束（务必遵守）**：色板定义在 `core:common`（纯 ARGB 整数、不依赖 Compose），Compose 层只做 `Color(argb)` 包装；`ScheduleBlock` 直接携带解析后的色值。这样周视图与小组件天然拿到同一色值。
 >
 > **历史教训**：自动取色的模数**不能**跟着 `colors.size` 走，否则往色板里加一个颜色会让所有已有课表的自动色整体错位。用固定的 `AUTO_COLOR_COUNT` 常量（当前为 10）。
+
+### FR-11 统一的滚轮与周次点选输入（P0）
+
+「周几 / 起始节 / 结束节」与「周次」这两类字段，在**所有**编辑入口（周视图抽屉、课程编辑页）
+必须用同一种输入方式，避免「这里要点选、那里要手填」的困惑。
+
+- **滚轮选择器**（`core:designsystem/picker/WheelPicker`）：`LazyColumn` + `rememberSnapFlingBehavior`
+  实现惯性吸附，可见 3 项、中间高亮；`LabeledWheel` 用于表单内复用。**不引入第三方滚轮库**
+- **周次点选器**（`WeekPicker`）：`1..totalWeeks` 网格点选，附「整学期 / 单周 / 双周 / 清空」快捷
+- 承载 `WeekPicker` 的两个 feature 模块都依赖 `core:designsystem`，组件放这里即可共用
+
+**存储格式不变（重要）**：`CourseSession.weekSpec` 仍是**字符串**，它是导入格式 v1.0 的契约字段。
+点选只是**输入方式**的变化，落库前由 `WeekSpecFormatter.format(weeks, totalWeeks)` 转回表达式，
+读出时由 `WeekSpecParser.parse()` 反解。因此**不需要改数据契约、不需要数据库迁移**。
+
+> **实现约束**：滚轮「滚动结束后回写选中值」的判定必须走 `core:common/WheelScrollGuard`，
+> **不能**直接判断 `!isScrollInProgress` —— 它初始即 false，首次组合会被误当成一次「滚动结束」，
+> 从而把外部传入的选中值重置成第一项。详见 `docs/CHANGELOG.md` 的 #17。
 
 ---
 

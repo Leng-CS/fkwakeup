@@ -426,19 +426,3 @@ private fun SessionEditor(
         }
     }
 }
-
-@Composable
-private fun NumberField(
-    label: String,
-    value: Int,
-    onValueChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    OutlinedTextField(
-        value = value.toString(),
-        onValueChange = { raw -> raw.toIntOrNull()?.let(onValueChange) },
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-        singleLine = true,
-        modifier = modifier,
-    )
-}
