@@ -25,6 +25,9 @@ kotlin {
 }
 
 dependencies {
+    // 课程色板的色值定义在 core:common（纯整数），这里只做 Color 包装
+    implementation(project(":core:common"))
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)

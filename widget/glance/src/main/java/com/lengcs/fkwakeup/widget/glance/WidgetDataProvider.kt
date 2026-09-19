@@ -21,14 +21,21 @@ data class WidgetLesson(
     val timeText: String,
 )
 
+/** 网格里的一个格子 */
+data class WidgetCell(
+    val label: String,
+    /** 该课程最终使用的颜色（自定义色优先，否则按课名哈希） */
+    val colorArgb: Int,
+)
+
 /** 小组件数据快照 */
 data class WidgetData(
     val termName: String?,
     val weekText: String,
     val nextLesson: WidgetLesson?,
     val remainingToday: List<WidgetLesson>,
-    /** [节次][星期] -> 课程名缩略；没有课为 null */
-    val weekGrid: List<List<String?>>,
+    /** [节次][星期] -> 格子；没有课为 null */
+    val weekGrid: List<List<WidgetCell?>>,
 )
 
 class WidgetDataProvider(
@@ -118,9 +125,9 @@ class WidgetDataProvider(
         sections: List<SectionTemplate>,
         week: Int,
         totalWeeks: Int,
-    ): List<List<String?>> {
+    ): List<List<WidgetCell?>> {
         val rows = sections.size.coerceAtMost(MAX_GRID_ROWS)
-        val grid = List(rows) { MutableList<String?>(7) { null } }
+        val grid = List(rows) { MutableList<WidgetCell?>(7) { null } }
         val blocks = ScheduleLayout.build(courses, week, totalWeeks)
 
         for (block in blocks) {
@@ -128,7 +135,9 @@ class WidgetDataProvider(
             val from = block.startRow
             val to = (block.startRow + block.rowSpan - 1).coerceAtMost(rows - 1)
             for (row in from..to) {
-                if (row in 0 until rows) grid[row][block.dayIndex] = label
+                if (row in 0 until rows) {
+                    grid[row][block.dayIndex] = WidgetCell(label, block.colorArgb)
+                }
             }
         }
         return grid

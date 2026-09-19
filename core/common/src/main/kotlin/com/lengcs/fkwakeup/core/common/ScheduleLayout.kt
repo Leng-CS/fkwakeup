@@ -29,6 +29,11 @@ data class ScheduleBlock(
     val startMinutes: Int? = null,
     /** 本块结束时间，节次时间表缺失时为 null */
     val endMinutes: Int? = null,
+    /**
+     * 本块最终使用的颜色（ARGB）：课程自定义色优先，否则按课名哈希。
+     * 在布局阶段就算好，UI 层不再做判断，避免 App 与小组件出现色差。
+     */
+    val colorArgb: Int = 0,
 )
 
 /**
@@ -67,6 +72,7 @@ object ScheduleLayout {
                     rowSpan = (session.endSection - session.startSection + 1).coerceAtLeast(1),
                     startMinutes = sectionTimes[session.startSection]?.startMinutes,
                     endMinutes = sectionTimes[session.endSection]?.endMinutes,
+                    colorArgb = CourseColorPalette.resolve(entry.course.colorArgb, entry.course.name),
                 )
             }
         }

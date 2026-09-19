@@ -2,6 +2,7 @@ package com.lengcs.fkwakeup.feature.schedule
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,11 +22,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,8 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lengcs.fkwakeup.core.common.CourseTextColor
 import com.lengcs.fkwakeup.core.common.ScheduleBlock
-import com.lengcs.fkwakeup.core.designsystem.palette.CoursePalette
 import com.lengcs.fkwakeup.core.designsystem.theme.FkwakeupTheme
 import com.lengcs.fkwakeup.core.model.SectionTemplate
 
@@ -58,8 +65,15 @@ fun ScheduleScreen(
     viewModel: ScheduleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var editingBlock by remember { mutableStateOf<ScheduleBlock?>(null) }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    LaunchedEffect(Unit) {
+        viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         ScheduleTopBar(
             termName = state.term?.name,
             displayWeek = state.displayWeek,
@@ -90,9 +104,40 @@ fun ScheduleScreen(
                     sectionCount = state.sections.size,
                     todayDayOfWeek = state.todayDayOfWeek,
                     currentSection = state.currentSection,
+                    onBlockClick = { editingBlock = it },
                 )
             }
         }
+    }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+
+    editingBlock?.let { block ->
+        CourseBlockEditSheet(
+            block = block,
+            onDismiss = { editingBlock = null },
+            onSave = { name, teacher, color, dow, from, to, spec, place ->
+                viewModel.saveBlockEdits(
+                    block = block,
+                    name = name,
+                    teacher = teacher,
+                    colorArgb = color,
+                    dayOfWeek = dow,
+                    startSection = from,
+                    endSection = to,
+                    weekSpec = spec,
+                    location = place,
+                    onDone = { editingBlock = null },
+                )
+            },
+            onDelete = {
+                viewModel.deleteBlock(block) { editingBlock = null }
+            },
+        )
     }
 }
 
@@ -257,6 +302,7 @@ private fun ScheduleGrid(
     sectionCount: Int,
     todayDayOfWeek: Int?,
     currentSection: Int?,
+    onBlockClick: (ScheduleBlock) -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val columnWidth: Dp = maxWidth / 7
@@ -303,7 +349,8 @@ private fun ScheduleGrid(
                             width = columnWidth / block.columnCount,
                             height = ROW_HEIGHT * block.rowSpan,
                         )
-                        .padding(1.dp),
+                        .padding(1.dp)
+                        .clickable { onBlockClick(block) },
                 ) {
                     CourseBlockCard(block = block, ended = ended)
                 }
@@ -317,15 +364,21 @@ private fun CourseBlockCard(
     block: ScheduleBlock,
     ended: Boolean,
 ) {
-    val baseColor = block.course.colorArgb?.let { Color(it) }
-        ?: CoursePalette.pickFor(block.course.name)
+    // 颜色在布局阶段已解析好（自定义色优先，否则按课名哈希），这里直接用
+    val baseColor = Color(block.colorArgb)
     val alpha = if (ended) 0.5f else 1f
+    // 自定义色不一定是深色，按亮度决定用黑字还是白字，避免浅色块上白字看不清
+    val onBlockColor = if (CourseTextColor.shouldUseDarkText(block.colorArgb)) {
+        Color.Black
+    } else {
+        Color.White
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         shape = MaterialTheme.shapes.small,
         color = baseColor.copy(alpha = baseColor.alpha * alpha),
-        contentColor = Color.White,
+        contentColor = onBlockColor,
     ) {
         Column(modifier = Modifier.padding(horizontal = 3.dp, vertical = 2.dp)) {
             // 1. 开始时间
@@ -334,7 +387,7 @@ private fun CourseBlockCard(
                     ?: "第${block.session.startSection}节",
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                 maxLines = 1,
-                color = Color.White.copy(alpha = 0.85f),
+                color = onBlockColor.copy(alpha = 0.85f),
             )
             // 2. 课程名：给足行数，尽量不截断
             Text(
@@ -357,7 +410,7 @@ private fun CourseBlockCard(
                     ),
                     maxLines = 2,
                     overflow = TextOverflow.Clip,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = onBlockColor.copy(alpha = 0.85f),
                 )
             }
         }

@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -33,6 +34,7 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.lengcs.fkwakeup.widget.glance.R
+import com.lengcs.fkwakeup.core.common.CourseTextColor
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -250,7 +252,7 @@ private fun LargeView(data: WidgetData, totalWidth: Dp) {
         // Glance 没有自定义 Layout，做不了 App 里那种跨行长块
         data.weekGrid.forEach { row ->
             Row(modifier = GlanceModifier.fillMaxWidth().height(cellHeight)) {
-                row.forEachIndexed { dayIndex, label ->
+                row.forEachIndexed { dayIndex, cell ->
                     val isToday = dayIndex == todayIndex
                     Box(
                         modifier = GlanceModifier
@@ -258,18 +260,24 @@ private fun LargeView(data: WidgetData, totalWidth: Dp) {
                             .padding(1.dp)
                             .background(
                                 when {
-                                    label != null -> WidgetColors.courseBlock
+                                    // 有课就用课程自己的颜色（用户自定义色或按课名哈希）
+                                    cell != null -> ColorProvider(Color(cell.colorArgb))
                                     isToday -> WidgetColors.todayColumn
                                     else -> WidgetColors.gridLine
                                 },
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (label != null) {
+                        if (cell != null) {
                             Text(
-                                text = label,
+                                text = cell.label,
                                 style = TextStyle(
-                                    color = WidgetColors.onCourseBlock,
+                                    // 自定义色不一定是深色，按亮度切换黑/白字
+                                    color = if (CourseTextColor.shouldUseDarkText(cell.colorArgb)) {
+                                        ColorProvider(Color.Black)
+                                    } else {
+                                        ColorProvider(Color.White)
+                                    },
                                     fontSize = 9.sp,
                                     textAlign = TextAlign.Center,
                                 ),

@@ -6,6 +6,27 @@
     <string name="schedule_prev_week">上一周</string>
     <string name="schedule_next_week">下一周</string>
     <string name="schedule_today">回到本周</string>
+    <!-- 课程块编辑抽屉 -->
+    <string name="sheet_title">编辑课程</string>
+    <string name="sheet_name">课程名称</string>
+    <string name="sheet_teacher">任课教师</string>
+    <string name="sheet_color">颜色</string>
+    <string name="sheet_color_auto">自动</string>
+    <string name="sheet_this_session">本节课</string>
+    <string name="sheet_day">周几</string>
+    <string name="sheet_start">起</string>
+    <string name="sheet_end">止</string>
+    <string name="sheet_weeks">周次</string>
+    <string name="sheet_location">地点</string>
+    <string name="sheet_save">保存</string>
+    <string name="sheet_cancel">取消</string>
+    <string name="sheet_delete_session">删除本节课</string>
+    <string name="sheet_delete_title">删除时间段</string>
+    <string name="sheet_delete_text">只删除这一个时间段，课程本身会保留。确定吗？</string>
+    <string name="sheet_block_desc">课程块，点击查看或编辑</string>
+    <string name="action_confirm">确定</string>
+    <string name="action_cancel">取消</string>
+
     <string name="schedule_prev_cd">切换到上一周</string>
     <string name="schedule_next_cd">切换到下一周</string>
     <string name="schedule_today_cd">回到本周</string>
