@@ -33,7 +33,7 @@ Android 原生课程表 App。核心价值：**把教务系统里那张难用的
 | 可见性 | 公开 |
 | 默认分支 | `main` |
 | 分支保护 | 已开启：禁 force push、禁删除，**且对管理员生效** |
-| 内容 | 13 个 Gradle 模块 · Issue #1–#29 · Milestone M0–M9 · Release `v0.1.0-demo` |
+| 内容 | 13 个 Gradle 模块 · Issue #1–#31 · Milestone M0–M9 · Release `v0.1.0-demo` |
 
 ```
 .gitattributes
@@ -117,16 +117,18 @@ M9 工作项：
 - **#24** [重构] 统一 action_* 通用按钮文案到 core:designsystem → 已合入 main
 - **#25** [需求] 周视图顶栏加常驻「导入课表」入口 → 已合入 main
 - **#26** [Bug] 课程管理新增/修改课程用错学期，致课程看不到或被搬走 → 已合入 main
-- **#27** [Bug] 导入页没有返回按钮 → 在分支 `feat/ui-polish-and-past-block` 上待合入
-- **#28** [微调] 课程管理页「新增课程」缺按钮样式 → 在分支 `feat/ui-polish-and-past-block` 上待合入
-- **#29** [需求] 已上完的课块变灰、正在上的加边框突出（含小组件同步）→ 在分支 `feat/ui-polish-and-past-block` 上待合入
+- **#27** [Bug] 导入页没有返回按钮 → 已合入 main
+- **#28** [微调] 课程管理页「新增课程」缺按钮样式 → 已合入 main
+- **#29** [需求] 已上完的课块变灰、正在上的加边框突出（含小组件同步）→ 已合入 main
+- **#30** [需求] 小组件重构为「最近课程列表」：紧凑 2×4 / 详细 4×4 双入口 → 在分支 `feat/widget-next-lessons` 上待合入
+- **#31** [需求] 小组件对齐课程边界的精确刷新 → 在分支 `feat/widget-next-lessons` 上待合入
 
 > 已合入的分支：`chore/schedule-ui-polish`、`fix/term-switch-not-refreshing`、
 > `feat/course-block-edit-and-color`、`feat/import-preview-edit`、`feat/shared-action-strings`、
-> `feat/schedule-import-entry`、`fix/course-edit-wrong-term`。
+> `feat/schedule-import-entry`、`fix/course-edit-wrong-term`、`feat/ui-polish-and-past-block`。
 >
 > **demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，
-> 附调试卷 APK（Android 8.0+）。当前单元测试 **161 个全绿**。
+> 附调试卷 APK（Android 8.0+）。当前单元测试 **176 个全绿**。
 
 ### 接手后先看这三件事
 

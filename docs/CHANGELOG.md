@@ -260,6 +260,44 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
   再用导入构造「08:55-14:45 跨 4 节且此刻正在进行」的课，确认它**全彩且带边框**，
   同一列「08:00-08:45 已结束」的课则是灰的
 
+### #30 [需求] 小组件重构为「最近课程列表」：紧凑 2×4 / 详细 4×4 双入口
+
+- 分支：`feat/widget-next-lessons`
+- **改动前**：一个选择器入口，内部按尺寸自适应成三种形态
+  （2×2 下一节 / 4×2 今日剩余 / 4×4 周网格）。与用户期望不符 ——
+  要的是聚焦「今天最近要上的课」的列表
+- **全部替换**为一种内容逻辑，两个独立入口（选择器里出现两项）：
+  - **紧凑版** `FkwakeupCompactWidget`（默认 2×4）：最近 **2** 节，无标题行
+  - **详细版** `FkwakeupWidget`（默认 4×4）：最近 **4** 节 + 「日期 · 第 N 周」标题行
+- 列表内容：**今天**尚未结束的课程（含正在上，`endMinutes > now`），按开始时间排序
+- 每条：左侧课程色竖条（`CourseColorPalette.resolve`，与周视图同源）+ 课名 +
+  「起止时间 · 节次号」+ 地点；**正在上的课**在课名旁标「正在上」（accent 色）
+- 今天没课 / 全上完 → 空态「今天没有更多课」；**不跨天补足**（与用户确认过）
+- 拉伸规则：条数上限由入口决定（紧凑 2 / 详细 4），行用 `defaultWeight()` 平分剩余高度
+  —— 拉伸只改行高不增减条数
+- 点击任意位置 → 打开 App 周视图（沿用 `actionStartActivity`）
+- **随之移除**：`weekGrid` / `WidgetCell` / 旧 `MediumView` / `SmallView` / `LargeView`。
+  #29 为小组件做的「已上完变灰」同步随之取消 —— 列表只显示未结束的课，**不需要灰态**
+  （周视图的 `BlockPhase` / `MutedBlockColor` 不受影响，仍在用）
+- 技术点：两个 `GlanceAppWidgetReceiver` 子类 + 两份 provider XML
+  （`targetCellWidth/Height` 分别为 2×4 与 4×4），manifest 注册第二项；
+  数据加载收敛到 `WidgetLoader`，两个形态共用同一份 `WidgetData`、各自裁条数
+- 核心选择逻辑抽到 `core:common/LessonWindow`（纯函数，与 #31 共用）
+
+### #31 [需求] 小组件对齐课程边界的精确刷新
+
+- 分支：`feat/widget-next-lessons`
+- **问题**：「最近课程」会随时间变化（某节上完移出、下一节开始标「正在上」），
+  原机制只有 15 分钟周期兜底，最多滞后 15 分钟
+- 数据加载时用 `LessonWindow.nextBoundaryMinutes` 算出**下一个课程边界**
+  （未开始课程的开始时刻 / 进行中课程的结束时刻，取最早者）
+- `WorkManager` `OneTimeWorkRequest` + `initialDelay` 定时到该时刻刷新，
+  `ExistingWorkPolicy.REPLACE`（数据变了边界可能变，旧任务作废）
+- **任务链自动续接**：每次 `WidgetRefreshWorker` 刷新后都重算下一个边界并再排一次
+- 边界为 null（今天全上完/没课）时取消精确任务 —— 跨天由 `DATE_CHANGED` 与周期任务兜底
+- `refreshNow` 升级为「刷新全部实例 + 重排边界任务」，所有既有调用方
+  （改课/导入/切学期）无需改动就自动获得边界调度
+
 ---
 
 ## 模板（下次新增时复制）

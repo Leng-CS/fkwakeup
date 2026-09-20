@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_next">下一节</string>
     <string name="widget_no_more">今天没有更多课</string>
-    <string name="widget_today_remaining">今日剩余</string>
     <string name="widget_no_term">还没有课表</string>
     <string name="widget_open">打开课表</string>
-    <string name="widget_empty">—</string>
-    <string name="widget_description">显示下一节课与本周课表</string>
+    <string name="widget_ongoing">正在上</string>
+    <string name="widget_location_unknown">地点未定</string>
+
+    <!-- 选择器里两个入口的标题 -->
+    <string name="widget_compact_label">课表 · 紧凑</string>
+    <string name="widget_detailed_label">课表 · 详细</string>
+    <string name="widget_description">显示今天最近的课程</string>
 </resources>

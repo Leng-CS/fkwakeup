@@ -1,10 +1,9 @@
 package com.lengcs.fkwakeup.widget.glance
 
-import com.lengcs.fkwakeup.core.common.BlockPhase
-import com.lengcs.fkwakeup.core.common.BlockPhaseCalculator
+import com.lengcs.fkwakeup.core.common.CourseColorPalette
 import com.lengcs.fkwakeup.core.common.CurrentTermPick
 import com.lengcs.fkwakeup.core.common.CurrentWeekCalculator
-import com.lengcs.fkwakeup.core.common.MutedBlockColor
+import com.lengcs.fkwakeup.core.common.LessonWindow
 import com.lengcs.fkwakeup.core.common.ScheduleLayout
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
@@ -14,35 +13,39 @@ import com.lengcs.fkwakeup.core.model.SectionTemplate
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.TextStyle as JavaTextStyle
+import java.util.Locale
 
-/** 小组件要展示的一节课 */
+/** 小组件「最近课程」列表里的一条 */
 data class WidgetLesson(
     val name: String,
-    val teacher: String?,
     val location: String?,
+    /** 「第 5-7 节」 */
+    val sectionText: String,
+    /** 「14:00-14:45」 */
+    val timeText: String,
     val startMinutes: Int,
     val endMinutes: Int,
-    val sectionText: String,
-    val timeText: String,
-)
-
-/** 网格里的一个格子 */
-data class WidgetCell(
-    val label: String,
-    /** 该课程最终使用的颜色（自定义色优先，否则按课名哈希） */
+    /** 该课程最终使用的颜色（自定义色优先，否则按课名哈希），用于左侧色条 */
     val colorArgb: Int,
-    /** 相对此刻的状态（#29）：已上完的在小组件上同样变灰 */
-    val phase: BlockPhase = BlockPhase.Upcoming,
+    /** 此刻正在上这节课 */
+    val isOngoing: Boolean,
 )
 
 /** 小组件数据快照 */
 data class WidgetData(
     val termName: String?,
+    /** 「第 2 周」 */
     val weekText: String,
-    val nextLesson: WidgetLesson?,
-    val remainingToday: List<WidgetLesson>,
-    /** [节次][星期] -> 格子；没有课为 null */
-    val weekGrid: List<List<WidgetCell?>>,
+    /** 「9月20日 周日」 */
+    val dateText: String,
+    /**
+     * 今天尚未结束的课程（含正在上），按开始时间排序。
+     * 已结束的不在其中 —— 空列表就是「今天没有更多课」。
+     */
+    val lessons: List<WidgetLesson>,
+    /** 下一个需要刷新的课程边界时刻；null 表示今天没有剩余边界 */
+    val nextBoundary: LocalDateTime?,
 )
 
 class WidgetDataProvider(
@@ -70,26 +73,36 @@ class WidgetDataProvider(
         val dayOfWeek = today.dayOfWeek.value
         val nowMinutes = now.hour * 60 + now.minute
 
-        val lessons = todayLessons(courses, sections, week, dayOfWeek, term.totalWeeks)
-        val remaining = lessons.filter { it.endMinutes > nowMinutes }
+        val all = todayLessons(courses, sections, week, dayOfWeek, term.totalWeeks)
+        // #30：列表 = 今天尚未结束的课（含正在上），最多取多少条由各形态自己决定
+        val indexes = LessonWindow.upcomingIndexes(
+            starts = all.map { it.startMinutes },
+            ends = all.map { it.endMinutes },
+            nowMinutes = nowMinutes,
+            max = Int.MAX_VALUE,
+        )
+        val lessons = indexes.map { i ->
+            val l = all[i]
+            l.copy(isOngoing = l.startMinutes <= nowMinutes)
+        }
+
+        val boundaryMinutes = LessonWindow.nextBoundaryMinutes(
+            starts = all.map { it.startMinutes },
+            ends = all.map { it.endMinutes },
+            nowMinutes = nowMinutes,
+        )
 
         return WidgetData(
             termName = term.name,
             weekText = "第 ${week}周",
-            nextLesson = remaining.firstOrNull(),
-            remainingToday = remaining,
-            weekGrid = buildGrid(
-                courses = courses,
-                sections = sections,
-                week = week,
-                totalWeeks = term.totalWeeks,
-                weekMonday = BlockPhaseCalculator.weekMonday(term.startMonday, week),
-                now = now,
-            ),
+            dateText = formatDate(today),
+            lessons = lessons,
+            nextBoundary = boundaryMinutes?.let { today.atStartOfDay().plusMinutes(it.toLong()) },
         )
     }
 
-    private fun todayLessons(
+    /** 今天（周 [dayOfWeek]）该周次命中的课程，按开始时间排序，颜色已解析 */
+    private suspend fun todayLessons(
         courses: List<CourseWithSessions>,
         sections: List<SectionTemplate>,
         week: Int,
@@ -121,64 +134,25 @@ class WidgetDataProvider(
 
                 result += WidgetLesson(
                     name = entry.course.name,
-                    teacher = entry.course.teacher,
                     location = session.location,
-                    startMinutes = start.startMinutes,
-                    endMinutes = end.endMinutes,
                     sectionText = sectionText,
                     timeText = "${formatClock(start.startMinutes)}-${formatClock(end.endMinutes)}",
+                    startMinutes = start.startMinutes,
+                    endMinutes = end.endMinutes,
+                    colorArgb = CourseColorPalette.resolve(entry.course.colorArgb, entry.course.name),
+                    isOngoing = false,
                 )
             }
         }
         return result.sortedBy { it.startMinutes }
     }
 
-    /**
-     * 本周网格。跨节次的课会在它覆盖的每一节都显示课程名 ——
-     * Glance 没有自定义 Layout，做不了 App 里那种跨行长块，
-     * 所以小组件上是「每个格子标课名」的缩略形式。
-     */
-    private fun buildGrid(
-        courses: List<CourseWithSessions>,
-        sections: List<SectionTemplate>,
-        week: Int,
-        totalWeeks: Int,
-        weekMonday: LocalDate,
-        now: LocalDateTime,
-    ): List<List<WidgetCell?>> {
-        val rows = sections.size.coerceAtMost(MAX_GRID_ROWS)
-        val grid = List(rows) { MutableList<WidgetCell?>(7) { null } }
-        val blocks = ScheduleLayout.build(courses, week, totalWeeks)
-
-        for (block in blocks) {
-            val label = block.course.name.take(3)
-            val from = block.startRow
-            val to = (block.startRow + block.rowSpan - 1).coerceAtMost(rows - 1)
-            for (row in from..to) {
-                if (row in 0 until rows) {
-                    // 小组件是「每格标课名」的缩略形式，一节课跨几节就出现几次，
-                    // 所以相位要**按这一格所在的节次**单独判，不能整块共用一个结果 ——
-                    // 否则正在上的那节课会被它后面那节判定成「已上完」而一起变灰。
-                    val section = sections.getOrNull(row)
-                    val phase = section?.let {
-                        BlockPhaseCalculator.of(
-                            date = weekMonday.plusDays(block.dayIndex.toLong()),
-                            startMinutes = it.startMinutes,
-                            endMinutes = it.endMinutes,
-                            now = now,
-                        )
-                    } ?: BlockPhase.Upcoming
-                    grid[row][block.dayIndex] = WidgetCell(label, block.colorArgb, phase)
-                }
-            }
-        }
-        return grid
+    /** 「9月20日 周日」 */
+    private fun formatDate(date: LocalDate): String {
+        val weekday = date.dayOfWeek.getDisplayName(JavaTextStyle.SHORT, Locale.CHINA)
+        return "${date.monthValue}月${date.dayOfMonth}日 $weekday"
     }
 
     private fun formatClock(minutes: Int): String =
         "%02d:%02d".format(minutes / 60, minutes % 60)
-
-    private companion object {
-        const val MAX_GRID_ROWS = 12
-    }
 }

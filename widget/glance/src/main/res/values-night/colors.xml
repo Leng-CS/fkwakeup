@@ -7,4 +7,6 @@
     <color name="widget_today_column">#FF4A4458</color>
     <color name="widget_course_block">#FFD0BCFF</color>
     <color name="widget_on_course_block">#FF1C1B1F</color>
+    <color name="widget_ongoing_accent">#FF9EC3F5</color>
+    <color name="widget_divider">#1FFFFFFF</color>
 </resources>
