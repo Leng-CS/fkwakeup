@@ -137,6 +137,7 @@ class ScheduleViewModel @Inject constructor(
         endSection: Int,
         weeks: Set<Int>,
         location: String?,
+        note: String? = null,
         onDone: () -> Unit,
     ) {
         viewModelScope.launch {
@@ -177,6 +178,7 @@ class ScheduleViewModel @Inject constructor(
                     endSection = to,
                     weekSpec = trimmedSpec,
                     location = location?.trim()?.ifBlank { null },
+                    note = note?.trim()?.ifBlank { null },
                 ),
             )
 

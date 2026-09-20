@@ -107,12 +107,18 @@ M9 工作项：
 - **#14** [需求] 本节课改用滚轮选择器 → 已实现
 - **#15** [需求] 周次改点选式 → 已实现
 - **#16** [需求] 课程编辑页同步滚轮与点选 → 已实现
-- **#17** [Bug] WheelPicker 首帧回写导致选中值被重置 → 已修复
-- **#18** [微调] 清理 CourseEditScreen 死代码 → 已完成
-- **#19** [微调] 补 WeekSpecFormatter 边界单测 → 已完成
+- **#17** [Bug] WheelPicker 首帧回写导致选中值被重置 → 已合入 main
+- **#18** [微调] 清理 CourseEditScreen 死代码 → 已合入 main
+- **#19** [微调] 补 WeekSpecFormatter 边界单测 → 已合入 main
+- **#20** [重构] 抽出共享编辑表单到 core:designsystem → 待合入
+- **#21** [需求] 导入预览页可编辑时间段全部字段（含颜色）→ 待合入
+- **#22** [需求] 导入预览页可改学期起始日 → 待合入
+- **#23** [Bug] 未选周次写入空 weekSpec 致课程永久不显示 → 待合入
 
-> **首个 demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，
-> 附调试卷 APK（Android 8.0+）。当前单元测试 **125 个全绿**。
+> #20–#23 在分支 **`feat/import-preview-edit`** 上。
+>
+> **demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，
+> 附调试卷 APK（Android 8.0+）。当前单元测试 **133 个全绿**。
 
 ### 接手后先看这三件事
 

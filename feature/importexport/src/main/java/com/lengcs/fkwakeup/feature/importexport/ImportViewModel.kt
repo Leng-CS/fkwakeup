@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lengcs.fkwakeup.core.common.WeekSpecFallback
+import com.lengcs.fkwakeup.core.common.WeekSpecFormatter
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.datastore.SettingsRepository
@@ -22,6 +24,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -184,6 +187,60 @@ class ImportViewModel @Inject constructor(
         courses = updated
     }
 
+    /**
+     * 修改某条时间段的字段。**只影响这一条**，不动同课程的其它时间段。
+     *
+     * 周次传的是点选出来的集合，这里用 [WeekSpecFormatter] 转回存储用的表达式 ——
+     * 存储格式仍是字符串，未改导入契约、不需要数据库迁移。
+     */
+    fun updateSession(
+        courseIndex: Int,
+        sessionIndex: Int,
+        dayOfWeek: Int,
+        startSection: Int,
+        endSection: Int,
+        weeks: Set<Int>,
+        location: String?,
+        note: String?,
+    ) {
+        val course = courses.getOrNull(courseIndex) ?: return
+        val draft = course.sessions.getOrNull(sessionIndex) ?: return
+
+        // 起止节写反了自动纠正，比报错省事（与周视图抽屉一致）
+        val from = minOf(startSection, endSection).coerceAtLeast(1)
+        val to = maxOf(startSection, endSection).coerceAtLeast(from)
+
+        val updatedSessions = course.sessions.toMutableList()
+        updatedSessions[sessionIndex] = draft.copy(
+            dayOfWeek = dayOfWeek.coerceIn(1, 7),
+            startSection = from,
+            endSection = to,
+            weeks = WeekSpecFormatter.format(weeks, totalWeeks),
+            location = location?.trim()?.ifBlank { null },
+            note = note?.trim()?.ifBlank { null },
+        )
+        courses = courses.toMutableList().also {
+            it[courseIndex] = course.copy(sessions = updatedSessions)
+        }
+    }
+
+    /** 设置课块颜色。null 表示「自动」（按课名哈希），与 App 内其它地方语义一致。 */
+    fun updateCourseColor(courseIndex: Int, colorArgb: Int?) {
+        courses = courses.mapIndexed { i, course ->
+            if (i == courseIndex) course.copy(colorArgb = colorArgb) else course
+        }
+    }
+
+    /**
+     * 修改学期起始日。
+     *
+     * 必须**对齐到周一** —— `startMonday` 的语义是「第一周的周一」，
+     * `CurrentWeekCalculator` 依赖它算周次；存一个周中日期会让「今天第几周」出现半周边界错误。
+     */
+    fun onStartDateChanged(date: LocalDate) {
+        startDate = date.with(DayOfWeek.MONDAY)
+    }
+
     // ---- 落库 ----
 
     fun confirmImport() {
@@ -203,9 +260,11 @@ class ImportViewModel @Inject constructor(
                         termId = termId,
                         name = course.name,
                         teacher = course.teacher,
+                        colorArgb = course.colorArgb,
                     ),
                 )
                 course.sessions.forEach { draft ->
+                    // 周几/节次缺失就跳过：用户没补齐的字段宁可少写一条，也不写坏数据
                     val startSection = draft.startSection ?: return@forEach
                     val endSection = draft.endSection ?: startSection
                     val dayOfWeek = draft.dayOfWeek ?: return@forEach
@@ -215,7 +274,9 @@ class ImportViewModel @Inject constructor(
                             dayOfWeek = dayOfWeek,
                             startSection = startSection,
                             endSection = endSection,
-                            weekSpec = draft.weeks ?: "1-$totalWeeks",
+                            // #23：空白周次必须回退成整学期。写空串会让周视图解析失败并把
+                            // 这条时间段静默跳过，整门课永久不显示且没有报错。
+                            weekSpec = WeekSpecFallback.orFullTerm(draft.weeks, totalWeeks),
                             location = draft.location,
                             note = draft.note,
                         ),
@@ -233,6 +294,15 @@ class ImportViewModel @Inject constructor(
         }
     }
 
-    /** 节次时间表在 createTerm 里用默认值写入，这里暴露给 UI 展示条数 */
-    fun defaultSectionCount(): Int = DefaultSections.forTerm(0L).size
+    /**
+     * 预览页编辑抽屉里「节次」滚轮的上限。
+     *
+     * 取默认节次表长度与**草稿里已用到的最大节次**的较大者：
+     * 若 AI 给的 JSON 带了更长的节次表、或某门课用到第 13 节，
+     * 直接用默认的 12 会把它夹掉，用户一保存就静默改坏了数据。
+     */
+    fun defaultSectionCount(): Int {
+        val used = courses.flatMap { it.sessions }.mapNotNull { it.endSection }.maxOrNull() ?: 0
+        return maxOf(DefaultSections.forTerm(0L).size, used)
+    }
 }

@@ -58,10 +58,16 @@ data class ImportDraft(
     val errors: List<ImportError>,
 )
 
-/** 归并后的一门课（按 名称+教师 归并键） */
+/**
+ * 归并后的一门课（按 名称+教师 归并键）。
+ *
+ * [colorArgb] 是用户在**导入预览页**选的自定义课块颜色，null 表示「自动」（按课名哈希取色）。
+ * 它只在预览页存在，JSON 导入契约里没有这个字段 —— 没有改动第 5 章的格式规范。
+ */
 data class MergedCourse(
     val name: String,
     val teacher: String?,
+    val colorArgb: Int? = null,
     val sessions: List<SessionDraft>,
 )
 

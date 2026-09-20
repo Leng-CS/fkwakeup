@@ -93,6 +93,62 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 - 往返断言用「**周集合等价**」而非字符串相等 —— 规范化会改变字面量（`{1,3..15}` → `1-15单`）
 - 验证：全绿，计入 core:common
 
+### #20 [重构] 抽出共享的课程/时间段编辑表单到 core:designsystem
+
+- 分支：`feat/import-preview-edit`
+- 新增 `core:designsystem/editor/`：`CourseSessionEditState`（纯数据）+ `CourseSessionEditForm`（表单主体）
+  + `SheetTopBar`（顶部操作条）+ `CourseColorPicker`
+- 表单**接收纯参数**、不含动作按钮与抽屉语义，因此 `feature:schedule`（周视图抽屉）与
+  `feature:importexport`（导入预览抽屉）都能用。周视图传 3 个按钮（含删除），预览页传 2 个
+- `sheet_*` / `weekday_*` 文案从 `feature/schedule` 搬到 `core:designsystem`
+- **`CourseBlockEditSheet` 改为使用共享表单**，只保留「填状态 / 回传结果」
+- 顺手给周视图抽屉补上**备注**字段（DB 早有 `CourseSession.note`，课程管理页也能改，此前抽屉漏了）
+- 验证：`:app:assembleDebug` 通过；周视图抽屉的字段、取值、滚轮定位、周次回填、颜色保存行为不变
+
+> **踩坑**：文案搬家后 `feature/schedule` 与 `core:designsystem` 会**同时定义** `sheet_title` 等名字，
+> 造成同名资源重复。已把搬走的从 `feature/schedule` 删除，并在该文件里留了注释防止后来者重新定义。
+> 另外两个模块都有 R 类，`CourseBlockEditSheet` 里用 `import ... R as DsR` 区分，避免指错模块。
+
+### #21 [需求] 导入预览页支持编辑时间段的全部字段（含颜色）
+
+- 分支：`feat/import-preview-edit`
+- 课程卡片改为**只读**（课名 / 教师 / 颜色圆点 / 时间段列表），点时间段行弹出编辑抽屉
+- 抽屉两段：**课程信息**（名称 / 教师 / 颜色，作用于该课全部时间段）、
+  **本节课**（周几 / 起止节 / 周次点选 / 地点 / 备注，只作用于当前这一条）
+- 卡片上保留「拆分为新课」与「删除」；抽屉里**不放**删除
+- `MergedCourse` 新增 `colorArgb: Int? = null`，`confirmImport()` 传给 `Course`
+  （`Course.colorArgb` 早已存在，**未改第 4/5 章数据契约、无需迁移**）
+- `ImportViewModel` 新增 `updateSession` / `updateCourseColor`；`defaultSectionCount()` 改为
+  「默认节次表长度」与「草稿里已用到的最大节次」取大者 —— 否则 AI 给的更大节次会被滚轮夹掉
+- **为什么周次用点选网格而非「起止周」**：起止表达不了 `1-16单`（单周）与 `1-9,11-18`（跳周），
+  而这两种在示例课表里都存在。用起止会导致「打开单周课、什么都不改直接保存 → `1-16单` 变成 `1-16`」
+  的静默数据损坏
+- 附加价值：`SessionDraft` 字段全 nullable，AI 漏给周几/节次的记录原会被静默丢弃，
+  现在可在预览页补齐
+- 验证：见文末实机验证
+
+### #22 [需求] 导入预览页支持修改学期起始日
+
+- 分支：`feat/import-preview-edit`
+- 学期信息卡新增「修改」→ Material3 `DatePicker`；选定后**对齐到周一**
+- **为什么必须对齐**：`startMonday` 的语义是「第一周的周一」，`CurrentWeekCalculator` 依赖它算周次。
+  存入周中日期会让「今天第几周」出现半周边界错误，进而影响周视图高亮与桌面小组件
+- DatePicker 返回的是 **UTC 毫秒**，按 `ZoneOffset.UTC` 还原日期，避免时区把日期挪一天
+- 验证：改起始日 → 落库 → 学期管理页 `startMonday` 正确且为周一
+
+### #23 [Bug] 未选周次时会写入空 weekSpec，导致该课程永久不显示
+
+- 分支：`feat/import-preview-edit`
+- 根因：`confirmImport()` 写的是 `draft.weeks ?: "1-$totalWeeks"`，**只判 null**。
+  但周次点选器有「清空」，清空后是**空字符串** → 兜底不生效 → 库里写入 `week_spec = ""`
+  → 周视图 `parseOrNull("")` 返回 null → `?: continue` 静默跳过 → **整门课永久不显示且无任何报错**
+- 此前预览页不能改周次，所以碰不到；#21 放开编辑后一点「清空」保存就会踩中
+- 修复：新增 `core:common/WeekSpecFallback.orFullTerm()` 判 null **与空白**，落库改用它；
+  两个编辑抽屉在保存前**拦住未选周次**并给出错误提示，不写库
+- 补 **8 个单测**（`WeekSpecFallbackTest`），其中「返回值一定可以被解析」一条把
+  「兜底必须产出合法表达式」钉成测试
+- 验证：全绿，计入 core:common
+
 ---
 
 ## 模板（下次新增时复制）

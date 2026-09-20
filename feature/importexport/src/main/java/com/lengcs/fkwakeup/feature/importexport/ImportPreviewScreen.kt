@@ -1,16 +1,23 @@
 package com.lengcs.fkwakeup.feature.importexport
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -21,19 +28,32 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.lengcs.fkwakeup.core.common.CourseColorPalette
 import com.lengcs.fkwakeup.core.importer.model.MergedCourse
 import com.lengcs.fkwakeup.core.importer.model.SessionDraft
 
 private val WEEK_NAMES = listOf("一", "二", "三", "四", "五", "六", "日")
 
+/**
+ * 确认识别结果页。
+ *
+ * 课程卡片**只读**展示（课名 / 教师 / 颜色 / 时间段列表），
+ * 点某条时间段行弹出编辑抽屉改全部字段 —— 见 #21。
+ */
 @Composable
 fun ImportPreviewScreen(
     viewModel: ImportViewModel,
     modifier: Modifier = Modifier,
 ) {
+    // 正在编辑的 (课程下标, 时间段下标)
+    var editingCourse by remember { mutableStateOf<Int?>(null) }
+    var editingSession by remember { mutableStateOf<Int?>(null) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -53,14 +73,21 @@ fun ImportPreviewScreen(
             ),
             style = MaterialTheme.typography.bodyMedium,
         )
+        Text(
+            text = stringResource(R.string.preview_tap_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         TermCard(viewModel)
 
         viewModel.courses.forEachIndexed { index, course ->
             CourseCard(
-                index = index,
                 course = course,
-                onRename = { name, teacher -> viewModel.renameCourse(index, name, teacher) },
+                onEditSession = { sessionIndex ->
+                    editingCourse = index
+                    editingSession = sessionIndex
+                },
                 onDelete = { viewModel.deleteCourse(index) },
                 onSplitSession = { sessionIndex -> viewModel.splitSession(index, sessionIndex) },
             )
@@ -71,10 +98,54 @@ fun ImportPreviewScreen(
             enabled = !viewModel.isImporting && viewModel.courses.isNotEmpty(),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (viewModel.isImporting) stringResource(R.string.preview_importing) else stringResource(R.string.preview_confirm))
+            Text(
+                if (viewModel.isImporting) {
+                    stringResource(R.string.preview_importing)
+                } else {
+                    stringResource(R.string.preview_confirm)
+                },
+            )
         }
         OutlinedButton(onClick = viewModel::reset, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.import_fail_retry))
+        }
+    }
+
+    // ---- 时间段编辑抽屉 ----
+    val courseIndex = editingCourse
+    val sessionIndex = editingSession
+    if (courseIndex != null && sessionIndex != null) {
+        val course = viewModel.courses.getOrNull(courseIndex)
+        val draft = course?.sessions?.getOrNull(sessionIndex)
+        if (course != null && draft != null) {
+            SessionEditSheet(
+                course = course,
+                draft = draft,
+                totalWeeks = viewModel.totalWeeks,
+                sectionCount = viewModel.defaultSectionCount(),
+                onDismiss = {
+                    editingCourse = null
+                    editingSession = null
+                },
+                onSave = { state ->
+                    // 课程级字段（作用于该课全部时间段）
+                    viewModel.renameCourse(courseIndex, state.name, state.teacher.ifBlank { null })
+                    viewModel.updateCourseColor(courseIndex, state.colorArgb)
+                    // 时间段级字段（只作用于这一条）
+                    viewModel.updateSession(
+                        courseIndex = courseIndex,
+                        sessionIndex = sessionIndex,
+                        dayOfWeek = state.dayOfWeek,
+                        startSection = state.startSection,
+                        endSection = state.endSection,
+                        weeks = state.weeks,
+                        location = state.location,
+                        note = state.note,
+                    )
+                    editingCourse = null
+                    editingSession = null
+                },
+            )
         }
     }
 }
@@ -86,7 +157,10 @@ private fun TermCard(viewModel: ImportViewModel) {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(stringResource(R.string.preview_term_card), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.preview_term_card),
+                style = MaterialTheme.typography.titleSmall,
+            )
             OutlinedTextField(
                 value = viewModel.termName,
                 onValueChange = viewModel::onTermNameChanged,
@@ -103,58 +177,64 @@ private fun TermCard(viewModel: ImportViewModel) {
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-            viewModel.startDate?.let {
-                Text("起始日：$it（已对齐到周一）", style = MaterialTheme.typography.bodySmall)
-            }
+            StartDateField(
+                dateText = viewModel.startDate?.toString(),
+                onPick = viewModel::onStartDateChanged,
+            )
         }
     }
 }
 
 @Composable
 private fun CourseCard(
-    index: Int,
     course: MergedCourse,
-    onRename: (String, String?) -> Unit,
+    onEditSession: (Int) -> Unit,
     onDelete: () -> Unit,
     onSplitSession: (Int) -> Unit,
 ) {
-    var name by remember(course.name) { mutableStateOf(course.name) }
-    var teacher by remember(course.teacher) { mutableStateOf(course.teacher.orEmpty()) }
+    val colorArgb = CourseColorPalette.resolve(course.colorArgb, course.name)
 
     Card {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = {
-                    name = it
-                    onRename(it, teacher.ifBlank { null })
-                },
-                label = { Text("课程名") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = teacher,
-                onValueChange = {
-                    teacher = it
-                    onRename(name, it.ifBlank { null })
-                },
-                label = { Text("教师") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(14.dp)
+                        .background(Color(colorArgb), CircleShape),
+                )
+                Text(
+                    text = course.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+            course.teacher?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             if (course.sessions.isEmpty()) {
-                Text(stringResource(R.string.preview_no_session), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    stringResource(R.string.preview_no_session),
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
+
             course.sessions.forEachIndexed { sessionIndex, session ->
                 SessionRow(
                     session = session,
-                    onSplit = { onSplitSession(sessionIndex) },
+                    onClick = { onEditSession(sessionIndex) },
                 )
+                // 最后一条之后不用分隔线
+                if (sessionIndex != course.sessions.lastIndex) {
+                    HorizontalDivider()
+                }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -169,21 +249,37 @@ private fun CourseCard(
 @Composable
 private fun SessionRow(
     session: SessionDraft,
-    onSplit: () -> Unit,
+    onClick: () -> Unit,
 ) {
-    Column {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 6.dp),
+    ) {
         Text(
             text = buildString {
-                append("周").append(WEEK_NAMES.getOrElse((session.dayOfWeek ?: 1) - 1) { "?" })
-                append(" 第").append(session.startSection ?: 0).append("-").append(session.endSection ?: 0).append("节")
+                append("周").append(session.dayLabel())
+                append(" 第")
+                    .append(session.startSection ?: 0)
+                    .append("-")
+                    .append(session.endSection ?: 0)
+                    .append("节")
                 append(" · ").append(session.weeks.orEmpty()).append("周")
                 append(" · ").append(session.location ?: stringResource(R.string.preview_location_unknown))
-                session.note?.let { append(" · ").append(it) }
+                session.note?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
             },
             style = MaterialTheme.typography.bodySmall,
         )
-        TextButton(onClick = onSplit) {
-            Text(stringResource(R.string.preview_split))
-        }
+        Text(
+            text = stringResource(R.string.preview_edit_session),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
+}
+
+private fun SessionDraft.dayLabel(): String {
+    val day = dayOfWeek
+    return if (day == null || day !in 1..7) "?" else WEEK_NAMES[day - 1]
 }

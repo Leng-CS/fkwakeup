@@ -94,8 +94,10 @@ widget/glance/          Glance 小组件 + 更新调度
 
 - **M0–M7 已完成并合入 main**：工程骨架、数据层、导入链路、导入 UI、周视图、课程与学期管理、小组件、导出备份
 - **M8（P1，提醒通知 + 冲突检测）暂缓**，未开始
-- **M9（MVP 后打磨与问题修复）进行中**：#10–#19 已全部实现并验证；#10、#11 已合入 main，其余待合入
-- **首个 demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，附调试卷 APK
-- 单元测试 **125 个**，全绿
+- **M9（MVP 后打磨与问题修复）进行中**
+  - #10–#19 已合入 main
+  - **#20–#23 在分支 `feat/import-preview-edit` 上待合入**（共享编辑表单、导入预览页字段纠偏、起始日可改、空周次 bug）
+- **demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，附调试卷 APK
+- 单元测试 **133 个**，全绿
 
 开始编码前先看 `docs/CHANGELOG.md` 了解最近改了什么，再确认当前该做哪个 Issue。
