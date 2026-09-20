@@ -40,15 +40,17 @@ import kotlinx.coroutines.withContext
  * 「最近课程」小组件（#30）。
  *
  * 内容只有一种逻辑 —— 今天尚未结束的课程，按开始时间排序：
- * - **详细版**（[FkwakeupWidget]，默认 4×4）：最近 4 节 + 「日期 · 第 N 周」标题行
- * - **紧凑版**（[FkwakeupCompactWidget]，默认 2×4）：最近 2 节，无标题行
+ * - **紧凑版**（[FkwakeupCompactWidget]，默认 **4 宽 × 2 高的横条**）：
+ *   最近 2 节**并排**两列，无标题行
+ * - **详细版**（[FkwakeupWidget]，默认 4×4）：最近 4 节竖排 + 「日期 · 第 N 周」标题行
  *
- * 条数上限由入口决定，拉伸只改行高不增减条数；空间不足时显示放得下的条数。
+ * 条数上限由入口决定，拉伸只改行高/列宽不增减条数；空间不足时显示放得下的条数。
  * 点击任意位置打开 App 周视图。
  */
 abstract class NextLessonsWidget(
     private val maxLessons: Int,
     private val showHeader: Boolean,
+    private val horizontal: Boolean,
 ) : GlanceAppWidget() {
 
     override val sizeMode: SizeMode = SizeMode.Exact
@@ -60,14 +62,15 @@ abstract class NextLessonsWidget(
                 data = data,
                 maxLessons = maxLessons,
                 showHeader = showHeader,
+                horizontal = horizontal,
                 context = context,
             )
         }
     }
 }
 
-/** 详细版：默认 4×4，最近 4 节 + 标题行 */
-class FkwakeupWidget : NextLessonsWidget(maxLessons = 4, showHeader = true) {
+/** 详细版：默认 4×4，最近 4 节竖排 + 标题行 */
+class FkwakeupWidget : NextLessonsWidget(maxLessons = 4, showHeader = true, horizontal = false) {
 
     companion object {
         /** 刷新本类的全部实例（供 [WidgetRefreshScheduler] 调用） */
@@ -81,8 +84,9 @@ class FkwakeupWidget : NextLessonsWidget(maxLessons = 4, showHeader = true) {
     }
 }
 
-/** 紧凑版：默认 2×4，最近 2 节，无标题行 */
-class FkwakeupCompactWidget : NextLessonsWidget(maxLessons = 2, showHeader = false) {
+/** 紧凑版：默认 4 宽 × 2 高横条，最近 2 节并排，无标题行 */
+class FkwakeupCompactWidget :
+    NextLessonsWidget(maxLessons = 2, showHeader = false, horizontal = true) {
 
     companion object {
         suspend fun refreshAll(context: Context) {
@@ -106,26 +110,35 @@ internal fun NextLessonsContent(
     data: WidgetData?,
     maxLessons: Int,
     showHeader: Boolean,
+    horizontal: Boolean,
     context: Context,
 ) {
     val launchComponent: ComponentName? =
         context.packageManager.getLaunchIntentForPackage(context.packageName)?.component
 
-    val baseModifier = GlanceModifier
-        .fillMaxSize()
-        .background(WidgetColors.surface)
-        .padding(10.dp)
-    val modifier = if (launchComponent != null) {
-        baseModifier.clickable(actionStartActivity(launchComponent))
+    // 点击行为挂在**内层**内容区，不能挂在根上 ——
+    // 根级的 GlanceModifier.clickable 会生成覆盖整个 RemoteViews 的 PendingIntent，
+    // 把 launcher 的长按（移除 / 调整大小）也一起吃掉，用户将无法管理小组件。
+    val contentModifier = if (launchComponent != null) {
+        GlanceModifier
+            .fillMaxSize()
+            .clickable(actionStartActivity(launchComponent))
     } else {
-        baseModifier
+        GlanceModifier.fillMaxSize()
     }
 
-    Box(modifier = modifier) {
-        when {
-            data == null -> CenteredText(stringRes = R.string.widget_no_term)
-            data.lessons.isEmpty() -> CenteredText(stringRes = R.string.widget_no_more)
-            else -> LessonList(data, maxLessons, showHeader)
+    Box(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .background(WidgetColors.surface)
+            .padding(10.dp),
+    ) {
+        Box(modifier = contentModifier) {
+            when {
+                data == null -> CenteredText(stringRes = R.string.widget_no_term)
+                data.lessons.isEmpty() -> CenteredText(stringRes = R.string.widget_no_more)
+                else -> LessonList(data, maxLessons, showHeader, horizontal)
+            }
         }
     }
 }
@@ -143,23 +156,48 @@ private fun CenteredText(stringRes: Int) {
     }
 }
 
-/** 标题行（详细版才有）+ 课程条目，条目平分剩余高度 —— 拉伸只改行高不增减条数 */
+/**
+ * 课程条目排布：
+ * - **竖排**（详细版）：标题行 + 每条一行，平分剩余高度
+ * - **横排**（紧凑版，4 宽 × 2 高的横条）：两节课**并排**两列，各占一半宽度
+ */
 @Composable
-private fun LessonList(data: WidgetData, maxLessons: Int, showHeader: Boolean) {
-    Column(modifier = GlanceModifier.fillMaxSize()) {
-        if (showHeader) {
-            Text(
-                text = "${data.dateText} · ${data.weekText}",
-                style = TextStyle(
-                    color = WidgetColors.onSurfaceVariant,
-                    fontSize = 11.sp,
-                ),
-                maxLines = 1,
-            )
-            Spacer(modifier = GlanceModifier.height(4.dp))
+private fun LessonList(
+    data: WidgetData,
+    maxLessons: Int,
+    showHeader: Boolean,
+    horizontal: Boolean,
+) {
+    if (horizontal) {
+        Row(modifier = GlanceModifier.fillMaxSize()) {
+            data.lessons.take(maxLessons).forEachIndexed { index, lesson ->
+                if (index > 0) {
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                }
+                LessonRow(
+                    lesson = lesson,
+                    modifier = GlanceModifier
+                        .defaultWeight()
+                        .fillMaxHeight(),
+                )
+            }
         }
-        data.lessons.take(maxLessons).forEach { lesson ->
-            LessonRow(lesson = lesson, modifier = GlanceModifier.defaultWeight())
+    } else {
+        Column(modifier = GlanceModifier.fillMaxSize()) {
+            if (showHeader) {
+                Text(
+                    text = "${data.dateText} · ${data.weekText}",
+                    style = TextStyle(
+                        color = WidgetColors.onSurfaceVariant,
+                        fontSize = 11.sp,
+                    ),
+                    maxLines = 1,
+                )
+                Spacer(modifier = GlanceModifier.height(4.dp))
+            }
+            data.lessons.take(maxLessons).forEach { lesson ->
+                LessonRow(lesson = lesson, modifier = GlanceModifier.defaultWeight())
+            }
         }
     }
 }

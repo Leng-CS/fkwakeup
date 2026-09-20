@@ -17,7 +17,7 @@
                 android:resource="@xml/fkwakeup_widget_info" />
         </receiver>
 
-        <!-- 紧凑版：默认 2×4，最近 2 节（#30） -->
+        <!-- 紧凑版：默认 4 宽 × 2 高横条，最近 2 节并排（#30） -->
         <receiver
             android:name=".FkwakeupCompactWidgetReceiver"
             android:exported="true"
