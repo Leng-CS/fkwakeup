@@ -36,6 +36,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.datastore.SettingsRepository
+import com.lengcs.fkwakeup.core.designsystem.R as DsR
 import com.lengcs.fkwakeup.core.model.Term
 import com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -233,11 +234,11 @@ fun TermManageScreen(
                 TextButton(onClick = {
                     viewModel.rename(term, text)
                     renamingTerm = null
-                }) { Text(stringResource(R.string.action_confirm)) }
+                }) { Text(stringResource(DsR.string.action_confirm)) }
             },
             dismissButton = {
                 TextButton(onClick = { renamingTerm = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(DsR.string.action_cancel))
                 }
             },
         )
@@ -252,11 +253,11 @@ fun TermManageScreen(
                 TextButton(onClick = {
                     viewModel.delete(term)
                     deletingTerm = null
-                }) { Text(stringResource(R.string.action_confirm)) }
+                }) { Text(stringResource(DsR.string.action_confirm)) }
             },
             dismissButton = {
                 TextButton(onClick = { deletingTerm = null }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(DsR.string.action_cancel))
                 }
             },
         )
@@ -350,10 +351,10 @@ private fun CreateTermDialog(
         confirmButton = {
             TextButton(onClick = {
                 onCreate(name, date, weeks.toIntOrNull() ?: 18)
-            }) { Text(stringResource(R.string.action_confirm)) }
+            }) { Text(stringResource(DsR.string.action_confirm)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(DsR.string.action_cancel)) }
         },
     )
 }

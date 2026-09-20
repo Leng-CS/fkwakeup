@@ -41,9 +41,11 @@ core/database/          Room entities / dao / repository
   repository/CurrentTermProvider   ★「当前学期」的响应式来源，页面切换学期靠它刷新
 core/importer/          ★ 导入解析：Extractor / Normalizer / Validator
 core/exporter/          导出为 campus-timetable v1.0（要求可往返）
-core/designsystem/      配色与通用组件
+core/designsystem/      配色、通用组件与**共享文案**
   picker/WheelPicker    滚轮选择器（周几 / 起止节）
   picker/WeekPicker     周次点选网格
+  editor/               ★课程/时间段编辑表单（CourseSessionEditForm / SheetTopBar / CourseColorPicker），
+                        feature:schedule 与 feature:importexport 共用；sheet_* / weekday_* / action_* 文案也在这
 feature/schedule/       周视图主页 + 课程块编辑抽屉（CourseBlockEditSheet）
 feature/course/         课程管理与编辑 + 学期管理 + 节次时间表
 feature/importexport/   导入页 + 预览纠偏页
@@ -72,6 +74,10 @@ widget/glance/          Glance 小组件 + 更新调度
 - 提交信息：`feat(schedule): 支持跨节次课程合并渲染`。
 - **每完成一个逻辑单元必须补单元测试**，无测试视为未完成。必测项见主文档 6.5 节。
 - 单个任务只改一个文件（或一个文件内的一组相邻函数），产出 diff 化改动。
+- **通用 UI 文案统一放 `core:designsystem`**（`action_*` 确定/取消/保存/删除、`weekday_*`、`sheet_*` 等），
+  **不要在 feature 模块里重复定义同名 string** —— 同名资源跨模块重复是 Android 资源合并的隐患。
+  跨模块引用时用 `import com.lengcs.fkwakeup.core.designsystem.R as DsR` 区分（同模块也有 `R`）。
+  已收口两次（`sheet_*` / `weekday_*` 见 #20，`action_*` 见 #24），**别再造第三份**。
 
 ## 明令禁止
 
@@ -95,8 +101,7 @@ widget/glance/          Glance 小组件 + 更新调度
 - **M0–M7 已完成并合入 main**：工程骨架、数据层、导入链路、导入 UI、周视图、课程与学期管理、小组件、导出备份
 - **M8（P1，提醒通知 + 冲突检测）暂缓**，未开始
 - **M9（MVP 后打磨与问题修复）进行中**
-  - #10–#19 已合入 main
-  - **#20–#23 在分支 `feat/import-preview-edit` 上待合入**（共享编辑表单、导入预览页字段纠偏、起始日可改、空周次 bug）
+  - #10–#24 已合入 main
 - **demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，附调试卷 APK
 - 单元测试 **133 个**，全绿
 

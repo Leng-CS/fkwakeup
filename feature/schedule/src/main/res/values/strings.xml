@@ -16,8 +16,7 @@
     <string name="sheet_delete_title">删除时间段</string>
     <string name="sheet_delete_text">只删除这一个时间段，课程本身会保留。确定吗？</string>
     <string name="sheet_block_desc">课程块，点击查看或编辑</string>
-    <string name="action_confirm">确定</string>
-    <string name="action_cancel">取消</string>
+    <!-- action_confirm / action_cancel 已随 #24 收敛到 core:designsystem，勿在此重复定义 -->
 
     <string name="schedule_prev_cd">切换到上一周</string>
     <string name="schedule_next_cd">切换到下一周</string>

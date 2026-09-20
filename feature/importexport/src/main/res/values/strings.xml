@@ -56,10 +56,7 @@
     <string name="preview_start_date_unknown">起始日：未识别</string>
     <string name="preview_pick_date">修改</string>
 
-    <!-- 日期选择对话框。这三个与 feature:schedule / feature:course 的同名字串重复，
-         但它们确实各模块独立用；若要收敛应统一搬进 core:designsystem。 -->
-    <string name="action_confirm">确定</string>
-    <string name="action_cancel">取消</string>
+    <!-- 日期选择对话框的「确定 / 取消」已随 #24 收敛到 core:designsystem，勿在此重复定义 -->
 
     <string name="week_1">一</string>
     <string name="week_2">二</string>

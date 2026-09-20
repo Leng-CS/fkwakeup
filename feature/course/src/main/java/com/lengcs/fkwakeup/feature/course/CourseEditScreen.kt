@@ -37,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lengcs.fkwakeup.core.designsystem.R as DsR
 import com.lengcs.fkwakeup.core.common.WeekSpecFormatter
 import com.lengcs.fkwakeup.core.common.WeekSpecParser
 import com.lengcs.fkwakeup.core.designsystem.picker.LabeledWheel
@@ -421,7 +422,7 @@ private fun SessionEditor(
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }
+                TextButton(onClick = onRemove) { Text(stringResource(DsR.string.action_remove)) }
             }
         }
     }

@@ -95,7 +95,7 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ### #20 [重构] 抽出共享的课程/时间段编辑表单到 core:designsystem
 
-- 分支：`feat/import-preview-edit`
+- 分支：`feat/import-preview-edit`，commit `d000353` → 已合入 main（`d000353`）
 - 新增 `core:designsystem/editor/`：`CourseSessionEditState`（纯数据）+ `CourseSessionEditForm`（表单主体）
   + `SheetTopBar`（顶部操作条）+ `CourseColorPicker`
 - 表单**接收纯参数**、不含动作按钮与抽屉语义，因此 `feature:schedule`（周视图抽屉）与
@@ -111,7 +111,7 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ### #21 [需求] 导入预览页支持编辑时间段的全部字段（含颜色）
 
-- 分支：`feat/import-preview-edit`
+- 分支：`feat/import-preview-edit`，commit `d000353` → 已合入 main（`d000353`）
 - 课程卡片改为**只读**（课名 / 教师 / 颜色圆点 / 时间段列表），点时间段行弹出编辑抽屉
 - 抽屉两段：**课程信息**（名称 / 教师 / 颜色，作用于该课全部时间段）、
   **本节课**（周几 / 起止节 / 周次点选 / 地点 / 备注，只作用于当前这一条）
@@ -129,7 +129,7 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ### #22 [需求] 导入预览页支持修改学期起始日
 
-- 分支：`feat/import-preview-edit`
+- 分支：`feat/import-preview-edit`，commit `d000353` → 已合入 main（`d000353`）
 - 学期信息卡新增「修改」→ Material3 `DatePicker`；选定后**对齐到周一**
 - **为什么必须对齐**：`startMonday` 的语义是「第一周的周一」，`CurrentWeekCalculator` 依赖它算周次。
   存入周中日期会让「今天第几周」出现半周边界错误，进而影响周视图高亮与桌面小组件
@@ -138,7 +138,7 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ### #23 [Bug] 未选周次时会写入空 weekSpec，导致该课程永久不显示
 
-- 分支：`feat/import-preview-edit`
+- 分支：`feat/import-preview-edit`，commit `d000353` → 已合入 main（`d000353`）
 - 根因：`confirmImport()` 写的是 `draft.weeks ?: "1-$totalWeeks"`，**只判 null**。
   但周次点选器有「清空」，清空后是**空字符串** → 兜底不生效 → 库里写入 `week_spec = ""`
   → 周视图 `parseOrNull("")` 返回 null → `?: continue` 静默跳过 → **整门课永久不显示且无任何报错**
@@ -148,6 +148,18 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 - 补 **8 个单测**（`WeekSpecFallbackTest`），其中「返回值一定可以被解析」一条把
   「兜底必须产出合法表达式」钉成测试
 - 验证：全绿，计入 core:common
+
+### #24 [重构] 统一 action_* 通用按钮文案到 core:designsystem
+
+- 分支：`feat/shared-action-strings`
+- `action_confirm`(确定) / `action_cancel`(取消) / `action_save`(保存) / `action_remove`(删除)
+  此前在 `feature/course`、`feature/schedule`、`feature/importexport` **各存一份**，语义完全相同；
+  改文案要同时改 3 处，极易漂移
+- 收敛到 `core:designsystem`，**13 处引用**改指 `com.lengcs.fkwakeup.core.designsystem.R`
+  （用 `as DsR` 别名区分，因为同模块也有 `R`）
+- 三个 feature 的 `strings.xml` 中删除同名定义并留注释，防止后来者重新定义
+- **纯资源搬迁，无行为变更**；这是 #20 那次「同名资源跨模块重复」踩坑的同类收口
+- 验证：全量单测 133 全绿 + `:app:assembleDebug` 通过
 
 ---
 

@@ -59,8 +59,6 @@
     <string name="export_subject">课表-%1$s</string>
     <string name="export_empty">还没有课表可以导出</string>
 
-    <string name="action_remove">删除</string>
-    <string name="action_cancel">取消</string>
-    <string name="action_confirm">确定</string>
-    <string name="action_save">保存</string>
+    <!-- action_confirm / action_cancel / action_save / action_remove 已随 #24 收敛到
+         core:designsystem（三个 feature 曾各存一份），勿在此重复定义 -->
 </resources>

@@ -33,7 +33,7 @@ Android 原生课程表 App。核心价值：**把教务系统里那张难用的
 | 可见性 | 公开 |
 | 默认分支 | `main` |
 | 分支保护 | 已开启：禁 force push、禁删除，**且对管理员生效** |
-| 内容 | 13 个 Gradle 模块 · Issue #1–#19 · Milestone M0–M9 · Release `v0.1.0-demo` |
+| 内容 | 13 个 Gradle 模块 · Issue #1–#24 · Milestone M0–M9 · Release `v0.1.0-demo` |
 
 ```
 .gitattributes
@@ -110,12 +110,14 @@ M9 工作项：
 - **#17** [Bug] WheelPicker 首帧回写导致选中值被重置 → 已合入 main
 - **#18** [微调] 清理 CourseEditScreen 死代码 → 已合入 main
 - **#19** [微调] 补 WeekSpecFormatter 边界单测 → 已合入 main
-- **#20** [重构] 抽出共享编辑表单到 core:designsystem → 待合入
-- **#21** [需求] 导入预览页可编辑时间段全部字段（含颜色）→ 待合入
-- **#22** [需求] 导入预览页可改学期起始日 → 待合入
-- **#23** [Bug] 未选周次写入空 weekSpec 致课程永久不显示 → 待合入
+- **#20** [重构] 抽出共享编辑表单到 core:designsystem → 已合入 main
+- **#21** [需求] 导入预览页可编辑时间段全部字段（含颜色）→ 已合入 main
+- **#22** [需求] 导入预览页可改学期起始日 → 已合入 main
+- **#23** [Bug] 未选周次写入空 weekSpec 致课程永久不显示 → 已合入 main
+- **#24** [重构] 统一 action_* 通用按钮文案到 core:designsystem → 已合入 main
 
-> #20–#23 在分支 **`feat/import-preview-edit`** 上。
+> 已合入的分支：`chore/schedule-ui-polish`、`fix/term-switch-not-refreshing`、
+> `feat/course-block-edit-and-color`、`feat/import-preview-edit`、`feat/shared-action-strings`。
 >
 > **demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，
 > 附调试卷 APK（Android 8.0+）。当前单元测试 **133 个全绿**。

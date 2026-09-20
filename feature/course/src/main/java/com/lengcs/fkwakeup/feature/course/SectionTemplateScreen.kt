@@ -34,6 +34,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.datastore.SettingsRepository
+import com.lengcs.fkwakeup.core.designsystem.R as DsR
 import com.lengcs.fkwakeup.core.model.DefaultSections
 import com.lengcs.fkwakeup.core.model.SectionTemplate
 import com.lengcs.fkwakeup.core.model.Term
@@ -172,7 +173,7 @@ fun SectionTemplateScreen(
                             modifier = Modifier.weight(1f),
                         )
                         TextButton(onClick = { rows.removeAt(position) }) {
-                            Text(stringResource(R.string.action_remove))
+                            Text(stringResource(DsR.string.action_remove))
                         }
                     }
                 }
@@ -205,7 +206,7 @@ fun SectionTemplateScreen(
                     .fillMaxWidth()
                     .padding(12.dp),
             ) {
-                Text(stringResource(R.string.action_save))
+                Text(stringResource(DsR.string.action_save))
             }
         }
     }

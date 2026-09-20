@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import com.lengcs.fkwakeup.core.designsystem.R as DsR
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -70,11 +71,11 @@ fun StartDateField(
                         onPick(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate())
                     }
                     showPicker = false
-                }) { Text(stringResource(R.string.action_confirm)) }
+                }) { Text(stringResource(DsR.string.action_confirm)) }
             },
             dismissButton = {
                 TextButton(onClick = { showPicker = false }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(DsR.string.action_cancel))
                 }
             },
         ) {

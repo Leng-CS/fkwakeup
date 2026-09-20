@@ -137,11 +137,11 @@ fun CourseBlockEditSheet(
                 TextButton(onClick = {
                     confirmDelete = false
                     onDelete()
-                }) { Text(stringResource(R.string.action_confirm)) }
+                }) { Text(stringResource(DsR.string.action_confirm)) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }) {
-                    Text(stringResource(R.string.action_cancel))
+                    Text(stringResource(DsR.string.action_cancel))
                 }
             },
         )

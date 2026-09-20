@@ -28,6 +28,16 @@
     <!-- 周次为空时的提示（#23：空 weekSpec 会让课程永久不显示） -->
     <string name="sheet_weeks_required">请至少选择一周</string>
 
+    <!--
+      通用动作文案（#24）。
+      这 4 个曾散落在 feature/course、feature/schedule、feature/importexport 里各一份，
+      语义完全相同，改文案要同时改 3 处，极易漂移。统一收敛到本模块。
+    -->
+    <string name="action_confirm">确定</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_save">保存</string>
+    <string name="action_remove">删除</string>
+
     <string name="weekday_1">周一</string>
     <string name="weekday_2">周二</string>
     <string name="weekday_3">周三</string>
