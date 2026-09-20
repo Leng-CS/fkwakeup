@@ -82,6 +82,9 @@ fun ScheduleScreen(
             onNext = viewModel::nextWeek,
             onToday = viewModel::backToCurrentWeek,
             onManage = onManageClick,
+            // 空课表时顶栏不放导入按钮：那时页面中央已有主 CTA「导入课表」，
+            // 顶栏再放一个是噪音（#25）
+            onImport = if (state.term == null || state.isEmpty) null else onImportClick,
         )
 
         if (state.term == null || state.isEmpty) {
@@ -153,6 +156,8 @@ private fun ScheduleTopBar(
     onNext: () -> Unit,
     onToday: () -> Unit,
     onManage: () -> Unit,
+    /** null = 不显示导入入口（空课表时） */
+    onImport: (() -> Unit)?,
 ) {
     val prevDesc = stringResource(R.string.schedule_prev_cd)
     val nextDesc = stringResource(R.string.schedule_next_cd)
@@ -189,12 +194,31 @@ private fun ScheduleTopBar(
             )
         }
 
+        // 常驻导入入口（#25）。空课表时 onImport 为 null，这里就不渲染 ——
+        // 那时页面中央已有主 CTA「导入课表」。
+        // 放在「管理」左侧：两者都是横向导航/动作入口，成一组。
+        onImport?.let { importClick ->
+            TextButton(
+                onClick = importClick,
+                modifier = Modifier.height(36.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.schedule_import),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
+
         TextButton(
             onClick = onManage,
             modifier = Modifier.height(36.dp),
             contentPadding = PaddingValues(horizontal = 6.dp),
         ) {
-            Text("管理", style = MaterialTheme.typography.labelSmall)
+            Text(
+                text = stringResource(R.string.schedule_manage),
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
 
         // 紧凑的周切换按钮；「回到本周」只在非本周时出现，避免本周时挤占文字区

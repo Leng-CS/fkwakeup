@@ -33,7 +33,7 @@ Android 原生课程表 App。核心价值：**把教务系统里那张难用的
 | 可见性 | 公开 |
 | 默认分支 | `main` |
 | 分支保护 | 已开启：禁 force push、禁删除，**且对管理员生效** |
-| 内容 | 13 个 Gradle 模块 · Issue #1–#24 · Milestone M0–M9 · Release `v0.1.0-demo` |
+| 内容 | 13 个 Gradle 模块 · Issue #1–#25 · Milestone M0–M9 · Release `v0.1.0-demo` |
 
 ```
 .gitattributes
@@ -115,6 +115,7 @@ M9 工作项：
 - **#22** [需求] 导入预览页可改学期起始日 → 已合入 main
 - **#23** [Bug] 未选周次写入空 weekSpec 致课程永久不显示 → 已合入 main
 - **#24** [重构] 统一 action_* 通用按钮文案到 core:designsystem → 已合入 main
+- **#25** [需求] 周视图顶栏加常驻「导入课表」入口 → 在分支 `feat/schedule-import-entry` 上待合入
 
 > 已合入的分支：`chore/schedule-ui-polish`、`fix/term-switch-not-refreshing`、
 > `feat/course-block-edit-and-color`、`feat/import-preview-edit`、`feat/shared-action-strings`。

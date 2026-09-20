@@ -6,6 +6,10 @@
     <string name="schedule_prev_week">上一周</string>
     <string name="schedule_next_week">下一周</string>
     <string name="schedule_today">回到本周</string>
+    <!-- 顶栏常驻导入入口（#25）。用短词「导入」而不是复用 schedule_empty_action 的
+         「导入课表」，是为了不挤占学期名的空间（#10 的顶栏紧凑化精神）。 -->
+    <string name="schedule_import">导入</string>
+    <string name="schedule_manage">管理</string>
 
     <!--
       注意：编辑抽屉的**表单**文案（sheet_title / sheet_name / sheet_day / weekday_* …）
