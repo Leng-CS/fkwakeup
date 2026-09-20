@@ -43,6 +43,7 @@ import com.lengcs.fkwakeup.core.common.WeekSpecParser
 import com.lengcs.fkwakeup.core.designsystem.picker.LabeledWheel
 import com.lengcs.fkwakeup.core.designsystem.picker.WeekPicker
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
+import com.lengcs.fkwakeup.core.database.repository.CurrentTermProvider
 import com.lengcs.fkwakeup.core.model.Course
 import com.lengcs.fkwakeup.core.model.CourseSession
 import com.lengcs.fkwakeup.core.model.SectionTemplate
@@ -76,6 +77,7 @@ class CourseEditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val courseRepository: CourseRepository,
     private val termRepository: com.lengcs.fkwakeup.core.database.repository.TermRepository,
+    private val currentTermProvider: CurrentTermProvider,
     @ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
@@ -107,7 +109,13 @@ class CourseEditViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val term = termRepository.observeTerms().first().firstOrNull()
+            // 必须是「当前学期」，**不能**用 termRepository.observeTerms().first()。
+            // 后者拿到的是「开学日期最晚的学期」（DAO 按 start_monday_epoch_day DESC 排序），
+            // 多学期时它与当前学期很可能不是同一个 —— 于是：
+            //   · 新建课程被写进那个学期 → 当前学期的管理页里看不到（#26）
+            //   · 编辑已有课程会把它的 term_id 改走 → 课程从当前学期彻底消失（#26）
+            // 「当前学期」的唯一权威来源是 CurrentTermProvider。
+            val term = currentTermProvider.observeCurrentTerm().first()
             _term.value = term
             // 节次表用于滚轮的取值范围（1..节次数）
             _sections.value = term?.let { termRepository.getSections(it.id) } ?: emptyList()
@@ -148,7 +156,13 @@ class CourseEditViewModel @Inject constructor(
         onDone: () -> Unit,
     ) {
         viewModelScope.launch {
-            val termId = _term.value?.id ?: return@launch
+            // 没有当前学期时**不能静默 return** —— 用户点了保存却什么都不发生，
+            // 会以为已经保存成功（这条路径以前就是静默失败）
+            val termId = _term.value?.id
+            if (termId == null) {
+                _messages.trySend("还没有学期，请先在「学期管理」里新建一个")
+                return@launch
+            }
             if (name.isBlank()) {
                 _messages.trySend("课程名称不能为空")
                 return@launch

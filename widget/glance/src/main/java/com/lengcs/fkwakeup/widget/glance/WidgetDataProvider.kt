@@ -1,5 +1,6 @@
 package com.lengcs.fkwakeup.widget.glance
 
+import com.lengcs.fkwakeup.core.common.CurrentTermPick
 import com.lengcs.fkwakeup.core.common.CurrentWeekCalculator
 import com.lengcs.fkwakeup.core.common.ScheduleLayout
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
@@ -46,9 +47,13 @@ class WidgetDataProvider(
 
     suspend fun load(now: LocalDateTime = LocalDateTime.now()): WidgetData? {
         val settings = settingsRepository.settings.first()
-        val termId = settings.currentTermId.takeIf { it > 0 }
-            ?: termRepository.observeTerms().first().firstOrNull()?.id
-            ?: return null
+        // 与 CurrentTermProvider 共用同一套「当前学期」选择规则（CHANGELOG #26）：
+        // 配置值优先，无效才退回「开学日期最晚的未归档学期」。
+        // 小组件这边没走 CurrentTermProvider，是因为 Glance 侧是手动构造（见 WidgetDependencies）。
+        val termId = CurrentTermPick.pick(
+            configuredTermId = settings.currentTermId,
+            fallbackIds = termRepository.observeTerms().first().map { it.id },
+        ) ?: return null
 
         val term = termRepository.getTerm(termId) ?: return null
         val sections = termRepository.getSections(termId)

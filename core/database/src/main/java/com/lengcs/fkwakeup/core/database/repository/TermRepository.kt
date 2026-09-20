@@ -20,6 +20,15 @@ class TermRepository @Inject constructor(
     private val sectionTemplateDao: SectionTemplateDao,
 ) {
 
+    /**
+     * 所有学期，**按开学日期由晚到早**（DAO 的 `ORDER BY start_monday_epoch_day DESC`）。
+     *
+     * ⚠️ 因此 `first()` **不是**「当前学期」，而是「开学日期最晚的学期」。
+     * 曾经有代码拿它当当前学期用，导致课程被写进 / 搬到别的学期（CHANGELOG #26）。
+     * 要拿当前学期，请用 [CurrentTermProvider.observeCurrentTerm] /
+     * [CurrentTermProvider.resolveCurrentTermId]；要表达"选哪个学期"的规则，
+     * 请复用 [com.lengcs.fkwakeup.core.common.CurrentTermPick]。
+     */
     fun observeTerms(includeArchived: Boolean = false): Flow<List<Term>> =
         if (includeArchived) {
             termDao.observeAll().map { it.map { e -> e.toDomain() } }

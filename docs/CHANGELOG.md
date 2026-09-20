@@ -182,6 +182,38 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
   未被压成 0 宽）；点击后进入导入页且是**干净的输入态**（不是上次的 Done 页）；
   顶栏布局不挤，学期名完整未截断
 
+### #26 [Bug] 课程管理里新增/修改课程用错学期，导致新课程看不到、已有课程被搬走
+
+- 分支：`fix/course-edit-wrong-term`
+- **现象**（用户报告）：多学期时，① 课程管理页添加课程保存后看不到 ② 修改已有课程保存后，
+  该课程在周视图和课程管理页都消失（像被删了）
+- **根因**：`CourseEditViewModel` 用 `termRepository.observeTerms().first()` 当作当前学期，
+  但 `TermDao.observeActive()` 是 `ORDER BY start_monday_epoch_day DESC` ——
+  **`first()` 是「开学日期最晚的学期」**，不是当前学期。两者只在**单学期**时恰好相同，
+  所以此前一直没暴露
+  - 新增：课程被写进那个学期 → 当前学期的列表里看不到
+  - 修改：`updateCourse` 用错误的 `termId` 覆盖 `course.term_id` → 课程被**搬到另一个学期**，
+    从当前学期彻底消失。**这不只是显示问题，是数据被改了**
+- **实测证据**（5 个学期；`observeTerms().first()` = `term_id=2`，当前学期 = `term_id=5`）：
+
+  | 操作 | 结果 |
+  |---|---|
+  | 新增 `TestCourseA` | 写入 `term_id=2`（应为 5）→ 管理页看不到 |
+  | 打开「体育（篮球）」**不改任何字段**直接保存 | `term_id` 由 **5 → 2**，课程从当前学期消失 |
+
+- **修复**：
+  1. `CourseEditViewModel` 改用 `CurrentTermProvider.observeCurrentTerm()`（真正的当前学期）
+  2. `save()` 不再静默失败 —— 没有学期时提示「请先在学期管理里新建一个」
+  3. 「选哪个学期」的规则抽成 `core:common/CurrentTermPick`（纯逻辑、可单测），
+     `CurrentTermProvider` / `SectionTemplateViewModel` / `TermManageViewModel` /
+     `WidgetDataProvider` 四处**复用同一套规则**，不再各自复刻
+  4. `TermRepository.observeTerms()` 补 KDoc 警示：`first()` 不是当前学期
+  5. `TermManageViewModel.delete()` 的兜底显式传 `configuredTermId = 0` ——
+     此刻 settings 里还是刚被删掉的 id，走「配置优先」会拿到已不存在的学期
+- 补 **7 个单测**（`CurrentTermPickTest`），把「配置优先 / 兜底靠后 / 兜底结果 ≠ 当前学期」钉住
+- 验证：修复后同样操作 —— 新增 `FixCheckA` 写入 `term_id=5` 且管理页可见；
+  「线性代数」保存后 `term_id` 仍为 5，管理页与周视图都在。全量单测 **140 全绿**
+
 ---
 
 ## 模板（下次新增时复制）

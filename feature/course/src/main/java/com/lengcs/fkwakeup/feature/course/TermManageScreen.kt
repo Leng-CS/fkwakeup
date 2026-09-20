@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lengcs.fkwakeup.core.common.CurrentTermPick
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.datastore.SettingsRepository
 import com.lengcs.fkwakeup.core.designsystem.R as DsR
@@ -115,7 +116,13 @@ class TermManageViewModel @Inject constructor(
         viewModelScope.launch {
             termRepository.deleteTerm(term)
             if (_currentTermId.value == term.id) {
-                val next = termRepository.observeTerms().first().firstOrNull()?.id ?: -1L
+                // 删掉的正好是当前学期 → 切到「开学日期最晚的未归档学期」。
+                // 这里**必须传 0**（显式忽略配置值）：此刻 settings 里存的还是刚被删掉的
+                // 那个 id，走 CurrentTermPick 的「配置优先」分支会拿到一个已不存在的学期。
+                val next = CurrentTermPick.pick(
+                    configuredTermId = 0L,
+                    fallbackIds = termRepository.observeTerms().first().map { it.id },
+                ) ?: -1L
                 settingsRepository.setCurrentTerm(next)
                 _currentTermId.value = next
             }

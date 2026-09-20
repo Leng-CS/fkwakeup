@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lengcs.fkwakeup.core.database.repository.CurrentTermProvider
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
-import com.lengcs.fkwakeup.core.datastore.SettingsRepository
 import com.lengcs.fkwakeup.core.designsystem.R as DsR
 import com.lengcs.fkwakeup.core.model.DefaultSections
 import com.lengcs.fkwakeup.core.model.SectionTemplate
@@ -50,7 +50,7 @@ import javax.inject.Inject
 @HiltViewModel
 class SectionTemplateViewModel @Inject constructor(
     private val termRepository: TermRepository,
-    private val settingsRepository: SettingsRepository,
+    private val currentTermProvider: CurrentTermProvider,
 ) : ViewModel() {
 
     private val _term = MutableStateFlow<Term?>(null)
@@ -64,9 +64,9 @@ class SectionTemplateViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val termId = settingsRepository.settings.first().currentTermId.takeIf { it > 0 }
-                ?: termRepository.observeTerms().first().firstOrNull()?.id
-            if (termId == null) return@launch
+            // 节次表是「当前学期」的属性，必须走权威来源取当前学期 ——
+            // 不要自己拼 `settings.currentTermId ?: observeTerms().first()`（见 CHANGELOG #26）
+            val termId = currentTermProvider.resolveCurrentTermId() ?: return@launch
             val term = termRepository.getTerm(termId) ?: return@launch
             _term.value = term
             termRepository.observeSections(termId).collect { _sections.value = it }
