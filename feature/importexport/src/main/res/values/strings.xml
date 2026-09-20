@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- 顶栏标题。导入页以前没有顶栏，从周视图进来后退不出去（#27） -->
+    <string name="import_title">导入课表</string>
+
     <!-- 分步引导 -->
     <string name="import_step_1">第 1 步　去教务系统截一张完整的课表</string>
     <string name="import_step_1_tip1">要能看到星期表头和左侧节次列，别只截课程格子</string>

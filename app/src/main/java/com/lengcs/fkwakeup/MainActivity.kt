@@ -125,6 +125,7 @@ private fun FkwakeupApp(sharedText: String?) {
         composable(Routes.IMPORT) {
             Scaffold { padding ->
                 ImportFlow(
+                    onBack = { navController.popBackStack() },
                     initialText = sharedText,
                     onImported = {
                         navController.navigate(Routes.HOME) {

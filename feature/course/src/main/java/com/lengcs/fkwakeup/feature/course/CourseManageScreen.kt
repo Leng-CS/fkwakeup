@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -160,9 +161,13 @@ fun CourseManageScreen(
                 .padding(padding)
                 .fillMaxSize(),
         ) {
-            TextButton(
+            // 填充样式的按钮：以前是 labelSmall 的 TextButton，看着像一行文字链接，
+            // 和旁边的「导出 / 学期管理 / 节次时间表」混在一起时不明显（#28）
+            Button(
                 onClick = onAddCourse,
-                modifier = Modifier.padding(horizontal = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
             ) {
                 Text(stringResource(R.string.course_add))
             }

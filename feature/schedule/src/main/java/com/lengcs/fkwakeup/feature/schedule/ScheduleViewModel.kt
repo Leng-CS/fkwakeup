@@ -2,6 +2,8 @@ package com.lengcs.fkwakeup.feature.schedule
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lengcs.fkwakeup.core.common.BlockPhase
+import com.lengcs.fkwakeup.core.common.BlockPhaseCalculator
 import com.lengcs.fkwakeup.core.common.CurrentWeekCalculator
 import com.lengcs.fkwakeup.core.common.ScheduleBlock
 import com.lengcs.fkwakeup.core.common.ScheduleLayout
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import javax.inject.Inject
 
@@ -42,6 +45,11 @@ data class ScheduleUiState(
     val todayDayOfWeek: Int? = null,
     /** 当前处于第几节，课间为 null */
     val currentSection: Int? = null,
+    /**
+     * 每个课块相对此刻的时间状态（#29），key = `CourseSession.id`。
+     * 周视图据此把已上完的课块涂灰、给正在上的那节加边框。
+     */
+    val blockPhases: Map<Long, BlockPhase> = emptyMap(),
     val isEmpty: Boolean = true,
 )
 
@@ -109,6 +117,18 @@ class ScheduleViewModel @Inject constructor(
             null
         }
 
+        // 每个课块相对此刻的状态（#29）。判定只看时间，所以翻到上一周会整周变灰。
+        val nowDateTime = LocalDateTime.now()
+        val weekMonday = BlockPhaseCalculator.weekMonday(term.startMonday, displayWeek)
+        val blockPhases = blocks.associate { block ->
+            block.session.id to BlockPhaseCalculator.of(
+                date = weekMonday.plusDays(block.dayIndex.toLong()),
+                startMinutes = block.startMinutes,
+                endMinutes = block.endMinutes,
+                now = nowDateTime,
+            )
+        }
+
         return ScheduleUiState(
             term = term,
             sections = sections,
@@ -117,6 +137,7 @@ class ScheduleViewModel @Inject constructor(
             displayWeek = displayWeek,
             todayDayOfWeek = if (isThisWeek) today.dayOfWeek.value else null,
             currentSection = currentSection,
+            blockPhases = blockPhases,
             isEmpty = courses.isEmpty(),
         )
     }

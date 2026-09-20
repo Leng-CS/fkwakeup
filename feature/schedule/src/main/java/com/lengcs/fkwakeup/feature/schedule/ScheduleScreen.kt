@@ -47,7 +47,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lengcs.fkwakeup.core.common.BlockPhase
 import com.lengcs.fkwakeup.core.common.CourseTextColor
+import com.lengcs.fkwakeup.core.common.MutedBlockColor
 import com.lengcs.fkwakeup.core.common.ScheduleBlock
 import com.lengcs.fkwakeup.core.designsystem.theme.FkwakeupTheme
 import com.lengcs.fkwakeup.core.model.SectionTemplate
@@ -106,7 +108,7 @@ fun ScheduleScreen(
                     blocks = state.blocks,
                     sectionCount = state.sections.size,
                     todayDayOfWeek = state.todayDayOfWeek,
-                    currentSection = state.currentSection,
+                    blockPhases = state.blockPhases,
                     onBlockClick = { editingBlock = it },
                 )
             }
@@ -328,7 +330,8 @@ private fun ScheduleGrid(
     blocks: List<ScheduleBlock>,
     sectionCount: Int,
     todayDayOfWeek: Int?,
-    currentSection: Int?,
+    /** 每个课块相对此刻的状态（#29）：已上完的变灰、正在上的加边框 */
+    blockPhases: Map<Long, BlockPhase>,
     onBlockClick: (ScheduleBlock) -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -360,12 +363,9 @@ private fun ScheduleGrid(
 
             // 上层：课程块，绝对定位
             blocks.forEach { block ->
-                // 只有「今天」且已经上完的课才降透明度 ——
-                // 别的天的课不能因为节次比当前靠前就判定为已结束
-                val isToday = todayDayOfWeek != null && block.dayIndex == todayDayOfWeek - 1
-                val ended = isToday &&
-                    currentSection != null &&
-                    (block.startRow + block.rowSpan - 1) < (currentSection - 1)
+                // 是否已上完由 BlockPhaseCalculator 按「日期 + 起止时间」判定（#29）。
+                // 早先这里只判定「今天 + 节次比当前靠前」，于是周一到周五哪怕早就过完了仍是全彩。
+                val phase = blockPhases[block.session.id] ?: BlockPhase.Upcoming
                 Box(
                     modifier = Modifier
                         .offset(
@@ -379,7 +379,7 @@ private fun ScheduleGrid(
                         .padding(1.dp)
                         .clickable { onBlockClick(block) },
                 ) {
-                    CourseBlockCard(block = block, ended = ended)
+                    CourseBlockCard(block = block, phase = phase)
                 }
             }
         }
@@ -389,22 +389,41 @@ private fun ScheduleGrid(
 @Composable
 private fun CourseBlockCard(
     block: ScheduleBlock,
-    ended: Boolean,
+    phase: BlockPhase,
 ) {
-    // 颜色在布局阶段已解析好（自定义色优先，否则按课名哈希），这里直接用
-    val baseColor = Color(block.colorArgb)
-    val alpha = if (ended) 0.5f else 1f
-    // 自定义色不一定是深色，按亮度决定用黑字还是白字，避免浅色块上白字看不清
-    val onBlockColor = if (CourseTextColor.shouldUseDarkText(block.colorArgb)) {
+    // 颜色在布局阶段已解析好（自定义色优先，否则按课名哈希），这里直接用。
+    // #29：已上完的课去饱和变灰（而不是像早先那样只降不透明度 —— 那还留着颜色，
+    // 看着是「淡」不是「灰」）。正在上的保持全彩并加一圈边框突出。
+    val blockArgb = if (phase == BlockPhase.Past) {
+        MutedBlockColor.mute(block.colorArgb)
+    } else {
+        block.colorArgb
+    }
+    val baseColor = Color(blockArgb)
+    // 自定义色不一定是深色，按亮度决定用黑字还是白字，避免浅色块上白字看不清。
+    // 注意要按**实际显示的颜色**算，灰化后亮度可能跨过阈值。
+    val onBlockColor = if (CourseTextColor.shouldUseDarkText(blockArgb)) {
         Color.Black
     } else {
         Color.White
     }
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (phase == BlockPhase.Ongoing) {
+                    Modifier.border(
+                        width = 1.5.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.small,
+                    )
+                } else {
+                    Modifier
+                },
+            ),
         shape = MaterialTheme.shapes.small,
-        color = baseColor.copy(alpha = baseColor.alpha * alpha),
+        color = baseColor,
         contentColor = onBlockColor,
     ) {
         Column(modifier = Modifier.padding(horizontal = 3.dp, vertical = 2.dp)) {

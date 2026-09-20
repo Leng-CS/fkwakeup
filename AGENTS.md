@@ -37,6 +37,8 @@ core/model/             领域模型（纯 Kotlin，无 Android 依赖）
 core/common/            WeekSpecParser / WeekSpecFormatter（周次表达式 ⇄ 周集合）
                         ScheduleLayout（网格布局算法）、CourseColorPalette（色板，纯整数）
                         WheelScrollGuard（★ 滚轮回写的首帧防护，纯逻辑，见 CHANGELOG #17）
+                        CurrentTermPick（★「选哪个学期」的唯一规则，见 CHANGELOG #26）
+                        BlockPhase / BlockPhaseCalculator / MutedBlockColor（★ 课块时间状态与灰化，见 CHANGELOG #29）
 core/database/          Room entities / dao / repository
   repository/CurrentTermProvider   ★「当前学期」的响应式来源，页面切换学期靠它刷新
 core/importer/          ★ 导入解析：Extractor / Normalizer / Validator
@@ -102,7 +104,8 @@ widget/glance/          Glance 小组件 + 更新调度
 - **M8（P1，提醒通知 + 冲突检测）暂缓**，未开始
 - **M9（MVP 后打磨与问题修复）进行中**
   - #10–#26 已合入 main
+  - **#27–#29 在分支 `feat/ui-polish-and-past-block` 上待合入**（导入页返回按钮、新增课程按钮样式、已上完课块变灰）
 - **demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，附调试卷 APK
-- 单元测试 **140 个**，全绿
+- 单元测试 **161 个**，全绿
 
 开始编码前先看 `docs/CHANGELOG.md` 了解最近改了什么，再确认当前该做哪个 Issue。

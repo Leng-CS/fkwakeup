@@ -34,7 +34,9 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.lengcs.fkwakeup.widget.glance.R
+import com.lengcs.fkwakeup.core.common.BlockPhase
 import com.lengcs.fkwakeup.core.common.CourseTextColor
+import com.lengcs.fkwakeup.core.common.MutedBlockColor
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -254,6 +256,14 @@ private fun LargeView(data: WidgetData, totalWidth: Dp) {
             Row(modifier = GlanceModifier.fillMaxWidth().height(cellHeight)) {
                 row.forEachIndexed { dayIndex, cell ->
                     val isToday = dayIndex == todayIndex
+                    // #29：已上完的课变灰，与 App 内周视图保持一致。
+                    // 文字颜色要按**灰化后**的颜色算 —— 灰化会改变亮度，
+                    // 沿用原色判断可能让浅灰底配白字看不清。
+                    val cellArgb = if (cell != null && cell.phase == BlockPhase.Past) {
+                        MutedBlockColor.mute(cell.colorArgb)
+                    } else {
+                        cell?.colorArgb
+                    }
                     Box(
                         modifier = GlanceModifier
                             .size(width = cellWidth, height = cellHeight)
@@ -261,19 +271,19 @@ private fun LargeView(data: WidgetData, totalWidth: Dp) {
                             .background(
                                 when {
                                     // 有课就用课程自己的颜色（用户自定义色或按课名哈希）
-                                    cell != null -> ColorProvider(Color(cell.colorArgb))
+                                    cellArgb != null -> ColorProvider(Color(cellArgb))
                                     isToday -> WidgetColors.todayColumn
                                     else -> WidgetColors.gridLine
                                 },
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (cell != null) {
+                        if (cell != null && cellArgb != null) {
                             Text(
                                 text = cell.label,
                                 style = TextStyle(
                                     // 自定义色不一定是深色，按亮度切换黑/白字
-                                    color = if (CourseTextColor.shouldUseDarkText(cell.colorArgb)) {
+                                    color = if (CourseTextColor.shouldUseDarkText(cellArgb)) {
                                         ColorProvider(Color.Black)
                                     } else {
                                         ColorProvider(Color.White)

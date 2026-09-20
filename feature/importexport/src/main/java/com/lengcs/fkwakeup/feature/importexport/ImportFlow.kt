@@ -10,12 +10,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -28,8 +31,10 @@ import kotlinx.coroutines.flow.collectLatest
 /**
  * 导入流程入口：输入 → 预览纠偏 / 失败闭环 → 落库。
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportFlow(
+    onBack: () -> Unit,
     onImported: (Long) -> Unit,
     initialText: String? = null,
     modifier: Modifier = Modifier,
@@ -54,7 +59,22 @@ fun ImportFlow(
         }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            // 只有「输入」和「失败」两个阶段需要这里的顶栏。
+            // 预览页自带 TopAppBar（它自己带 Scaffold），再套一层会出现两条标题栏。
+            // 以前这条路径**完全没有返回按钮**，从周视图顶栏进来后就退不出去了（#27）。
+            if (viewModel.stage == ImportStage.Input || viewModel.stage == ImportStage.Failure) {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.import_title)) },
+                    navigationIcon = {
+                        TextButton(onClick = onBack) { Text("<") }
+                    },
+                )
+            }
+        },
+    ) { padding ->
         when (viewModel.stage) {
             ImportStage.Input -> ImportScreen(viewModel = viewModel, modifier = modifier.padding(padding))
             ImportStage.Preview -> ImportPreviewScreen(viewModel = viewModel, modifier = modifier.padding(padding))
