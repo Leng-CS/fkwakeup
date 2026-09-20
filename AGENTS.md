@@ -88,6 +88,8 @@ widget/glance/          Glance 小组件 + 更新调度
 - 禁止跳过单元测试。
 - 禁止一次性生成超过 300 行的新文件，超长就拆分任务。
 - 禁止在小组件里使用 Glance 不支持的 API（Canvas、自定义 Layout、Compose 动画）。
+- 禁止在 Glance 小组件**根节点**放 `GlanceModifier.clickable` —— 它会吞掉 launcher 的
+  长按菜单，导致小组件无法移除/调整大小。点击行为挂在内层内容区（CHANGELOG #30）。
 - 禁止硬编码提示词文本，一律放 `res/raw`。
 - 禁止硬编码节次时间（各校不同），一律走节次时间表配置。
 
