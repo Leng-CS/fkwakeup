@@ -140,11 +140,58 @@ M9 工作项：
 
 一律走五步，详见 `AGENTS.md`「变更流程」与主文档 10.5 节。**不要直接提交到 main。**
 
+### 移交给下一个 AI（Codex）时的工作区
+
+- **工作区直接设为本仓库根目录（`fkwakeup/`）即可**。Codex 会自动读仓库根目录的
+  `AGENTS.md`（这是它的官方约定），本文档、主文档、CHANGELOG 全部在仓库内自包含，
+  不依赖任何外部文件
+- **不要**把外层工作区（本仓库的上级目录）设为 Codex 工作区 —— 那里有上一个 AI 的
+  会话记忆、临时脚本和 GitHub token，Codex 既不需要也不该碰
+- **GitHub 推送凭据不在仓库内**：token 存放在外层工作区的 `.gh_token`（token 属于用户本人）。
+  Codex 环境需要用户自行配置 GitHub 凭据；如担心 token 已暴露可随时在 GitHub 撤销重发
+- 分支状态：`main` 在 `26bde00`；`feat/widget-next-lessons`（#30/#31，已实机验证）
+  已推送**待合入**，合入是快进操作
+- 模拟器里的学期数据是测试数据（含「小组件验证」等临时学期），与真实数据无关
+
 ---
 
 ## 6. 工程环境注意事项
 
 这些是本机实测出来的坑，照做能省很多时间。
+
+### 本机构建环境（路径因机器而异）
+
+| 项 | 值 |
+|---|---|
+| JDK | `C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot`（需设 `JAVA_HOME`） |
+| Gradle 缓存 | `GRADLE_USER_HOME=D:\gradle-home`（不在 C 盘默认位置） |
+| Android SDK | `C:\Users\LengCS\AppData\Local\Android\Sdk` |
+| 模拟器 AVD | `ANDROID_AVD_HOME=D:\android-avd`，**不设这个模拟器报 Unknown AVD name 秒退** |
+| 测试 AVD | `Pixel_8_API_35`（Android 15，playstore 镜像） |
+| adb | `<SDK>\platform-tools\adb.exe`，所有 adb 调用要绕过沙箱 |
+
+构建命令：
+
+```bash
+export JAVA_HOME="C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot"
+export GRADLE_USER_HOME="D:\gradle-home"
+./gradlew.bat --no-daemon testDebugUnitTest :core:common:test :app:assembleDebug
+```
+
+（`core:common` 是纯 JVM 模块，任务名是 `test` 不是 `testDebugUnitTest`。）
+
+### Android 模拟器（本机实测）
+
+- **`-feature -Netsim` 参数无效**（日志会报 Bad feature name），不要依赖它； netsimd 崩溃问题在重装系统后未再复现
+- 模拟器**必须作为长驻任务运行**（命令体直接跑 emulator，不加 `&`）；`nohup &` 或 `Start-Process` 启动的实例活不过一次工具调用
+- playstore 镜像**拿不到 root**（`adb root` 拒绝），改不了系统时钟 —— 要验证「依赖当前时刻」的界面状态，就**构造数据让状态成立**（如导入含「此刻正在上课」的课表 JSON）
+- adb 每次调用要加绕过沙箱；会话首个 adb 命令可能失败（守护进程冷启动），先跑一次 `adb start-server`
+- **UI 验证一律从 `uiautomator dump` 的 bounds 取坐标**：截图像素 ≠ 设备坐标（本机截图 480×1080、设备 1080×2400），且 UI 布局改动后旧坐标全部作废
+- 判定控件真的渲染出来要看 bounds 的**宽高**，不能只看 content-desc 存在（Compose 曾把 IconButton 压成 0 宽）
+- 桌面小组件验证：`pm clear com.google.android.apps.nexuslauncher` 可重置桌面清掉旧实例；放置 = 长按空白 → Widgets → 展开应用 → `input motionevent DOWN/MOVE/UP` 拖拽预览；长按小组件呼出菜单需按住约 **3.5 秒**
+- 导入测试数据用文件路径（`adb push` 到 `/sdcard/Download/` 再走 SAF），不要用 `am start --es` 传 JSON（引号会被 shell 吃掉）
+- 验证截图**必须解码 PNG 校验非空白**（出现过 15KB 全透明空图，肉眼与正常截图无异）；1080×2400 正常截图约 100–250 KB、采样颜色数 > 20
+- 判断进程/文件存在性用 PowerShell 的 `Get-Process` / `Test-Path`：本机 Git Bash 的 PATH 会间歇性损坏（`grep`/`ls` 全部 command not found），管道里的结果会**静默为空**
 
 ### 推送代码
 
@@ -183,6 +230,7 @@ git -c credential.helper= push "https://<token>@github.com/Leng-CS/fkwakeup.git"
 - ❌ 跳过单元测试
 - ❌ 一次性生成超过 300 行的新文件
 - ❌ 小组件里用 Canvas / 自定义 Layout / Compose 动画（Glance 不支持）
+- ❌ Glance 小组件**根节点**放 `GlanceModifier.clickable`（吞掉 launcher 长按，无法移除/调整大小）
 - ❌ 硬编码提示词文本
 - ❌ 硬编码节次时间
 
@@ -194,10 +242,12 @@ git -c credential.helper= push "https://<token>@github.com/Leng-CS/fkwakeup.git"
 
 | 项 | 状态 |
 |---|---|
+| `feat/widget-next-lessons`（#30/#31）待合入 main | 已实机验证，快进即可；由用户确认 |
+| 已合入的 9 条历史分支清理 | 可删可留，未处理 |
+| 正式版发布需签名方案 | 用户决定暂缓，demo 继续用 debug 包 |
 | 平板 / 大屏布局适配 | 待定，P1 |
 | 学期中途调休的表达方式 | 暂定 P2 用「指定日期按某周课表执行」 |
 | GitHub Actions CI | 用户明确暂不需要 |
-| 连接器对仓库的写权限 | 当前只读；推代码走 token，不影响开发 |
 
 ---
 
