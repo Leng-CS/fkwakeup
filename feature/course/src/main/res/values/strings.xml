@@ -51,18 +51,16 @@
     <string name="sections_saved">已保存</string>
     <string name="sections_invalid">第 %1$d 节时间有误（结束需晚于开始）</string>
     <string name="sections_count">共 %1$d 节</string>
-    <string name="sections_segment">连续时段 %1$d</string>
-    <string name="sections_start_section">起始节次</string>
+    <string name="sections_global_settings">全局递推规则</string>
+    <string name="sections_start">开始</string>
+    <string name="sections_end">结束</string>
     <string name="sections_hour">小时</string>
     <string name="sections_minute">分钟</string>
     <string name="sections_lesson_duration">单节时长</string>
     <string name="sections_break_duration">课间时长</string>
     <string name="sections_minutes">%1$d 分钟</string>
-    <string name="sections_add_breakpoint">+ 添加断点</string>
-    <string name="sections_remove_breakpoint">删除断点</string>
-    <string name="sections_breakpoint_title">选择断点节次</string>
-    <string name="sections_breakpoint_hint">断点的开始时间、单节时长与课间时长可单独设置，之后的节次会自动递推。</string>
-    <string name="sections_preview">节次预览</string>
+    <string name="sections_edit_time">编辑第 %1$d 节时间</string>
+    <string name="sections_restore_auto">恢复自动递推</string>
     <string name="sections_invalid_order">第 %1$d 节结束时间不得晚于第 %2$d 节开始时间</string>
 
     <!-- 导出 -->

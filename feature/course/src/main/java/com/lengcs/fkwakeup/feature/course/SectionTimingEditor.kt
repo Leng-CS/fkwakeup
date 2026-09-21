@@ -14,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -24,9 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lengcs.fkwakeup.core.common.PlannedSection
+import com.lengcs.fkwakeup.core.common.SectionTimingOverride
 import com.lengcs.fkwakeup.core.common.SectionTimingPlanResult
 import com.lengcs.fkwakeup.core.common.SectionTimingPlanner
-import com.lengcs.fkwakeup.core.common.SectionTimingSegment
+import com.lengcs.fkwakeup.core.common.SectionTimingSettings
 import com.lengcs.fkwakeup.core.designsystem.R as DsR
 import com.lengcs.fkwakeup.core.designsystem.picker.LabeledWheel
 import com.lengcs.fkwakeup.core.model.SectionTemplate
@@ -38,229 +38,245 @@ internal fun SectionTimingEditor(
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val initialSegments = remember(sections) { SectionTimingPlanner.segmentsFrom(sections) }
-    val segments = remember(sections) { mutableStateListOf<SectionTimingSegment>().apply { addAll(initialSegments) } }
-    var sectionCount by remember(sections) { mutableIntStateOf(sections.size.coerceAtLeast(1)) }
-    var showBreakpointDialog by remember { mutableStateOf(false) }
-    val plan = SectionTimingPlanner.build(sectionCount, segments)
+    var settings by remember(sections) { mutableStateOf(SectionTimingPlanner.settingsFrom(sections)) }
+    val overrides = remember(sections) {
+        mutableStateListOf<SectionTimingOverride>().apply { addAll(SectionTimingPlanner.overridesFrom(sections)) }
+    }
+    var sectionCount by remember(sections) { mutableIntStateOf(sections.maxOfOrNull(SectionTemplate::index) ?: 12) }
+    var globalField by remember { mutableStateOf<GlobalTimingField?>(null) }
+    var editingSection by remember { mutableStateOf<PlannedSection?>(null) }
+    val plan = SectionTimingPlanner.build(sectionCount, settings, overrides)
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        val canRemoveLast = sectionCount > 1 && sectionCount > (segments.maxOfOrNull { it.startIndex } ?: 1)
+        Text(stringResource(R.string.sections_global_settings), style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TimingSettingButton(
+                label = stringResource(R.string.sections_lesson_duration),
+                value = settings.lessonDurationMinutes,
+                onClick = { globalField = GlobalTimingField.LESSON },
+                modifier = Modifier.weight(1f),
+            )
+            TimingSettingButton(
+                label = stringResource(R.string.sections_break_duration),
+                value = settings.breakDurationMinutes,
+                onClick = { globalField = GlobalTimingField.BREAK },
+                modifier = Modifier.weight(1f),
+            )
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = stringResource(R.string.sections_count, sectionCount),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = { sectionCount-- }, enabled = canRemoveLast) {
+            TextButton(onClick = { sectionCount-- }, enabled = sectionCount > (overrides.maxOfOrNull { it.index } ?: 1)) {
                 Text(stringResource(R.string.sections_remove_last))
             }
         }
 
-        segments.sortedBy { it.startIndex }.forEachIndexed { position, segment ->
-            key(segment.startIndex) {
-                TimingSegmentCard(
-                    number = position + 1,
-                    segment = segment,
-                    sectionCount = sectionCount,
-                    otherStarts = segments.filterNot { it === segment }.map { it.startIndex }.toSet(),
-                    isFirst = position == 0,
-                    onChange = { replacement ->
-                        val index = segments.indexOf(segment)
-                        if (index >= 0) segments[index] = replacement
-                    },
-                    onRemove = { segments.remove(segment) },
-                )
-            }
-        }
-
-        OutlinedButton(
-            onClick = { sectionCount++ },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(stringResource(R.string.sections_add)) }
-
-        OutlinedButton(
-            onClick = { showBreakpointDialog = true },
-            enabled = segments.size < sectionCount,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(stringResource(R.string.sections_add_breakpoint)) }
-
-        Text(
-            text = stringResource(R.string.sections_preview),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 8.dp),
-        )
         when (plan) {
-            is SectionTimingPlanResult.Valid -> TimingPreview(plan.sections)
+            is SectionTimingPlanResult.Valid -> plan.sections.forEach { section ->
+                SectionTimeRow(section = section, onClick = { editingSection = section })
+            }
             is SectionTimingPlanResult.Invalid -> Text(
                 text = plan.message,
                 color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
             )
         }
 
+        OutlinedButton(onClick = { sectionCount++ }, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.sections_add))
+        }
         OutlinedButton(onClick = onReset, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.sections_reset))
         }
         Button(
             onClick = {
-                if (plan is SectionTimingPlanResult.Valid) {
-                    onSave(plan.sections.map { it.toTemplate() })
-                }
+                if (plan is SectionTimingPlanResult.Valid) onSave(plan.sections.map(PlannedSection::toTemplate))
             },
             enabled = plan is SectionTimingPlanResult.Valid,
             modifier = Modifier.fillMaxWidth(),
         ) { Text(stringResource(DsR.string.action_save)) }
     }
 
-    if (showBreakpointDialog) {
-        BreakpointDialog(
-            sectionCount = sectionCount,
-            occupiedStarts = segments.map { it.startIndex }.toSet(),
-            plannedSections = (plan as? SectionTimingPlanResult.Valid)?.sections.orEmpty(),
-            onDismiss = { showBreakpointDialog = false },
-            onConfirm = { index, startMinutes ->
-                val source = segments.filter { it.startIndex < index }.maxByOrNull { it.startIndex } ?: return@BreakpointDialog
-                segments += SectionTimingSegment(
-                    startIndex = index,
-                    startMinutes = startMinutes,
-                    lessonDurationMinutes = source.lessonDurationMinutes,
-                    breakDurationMinutes = source.breakDurationMinutes,
-                )
-                showBreakpointDialog = false
+    globalField?.let { field ->
+        DurationDialog(
+            title = stringResource(
+                if (field == GlobalTimingField.LESSON) R.string.sections_lesson_duration else R.string.sections_break_duration,
+            ),
+            selectedMinutes = if (field == GlobalTimingField.LESSON) settings.lessonDurationMinutes else settings.breakDurationMinutes,
+            minimum = if (field == GlobalTimingField.LESSON) 1 else 0,
+            maximum = if (field == GlobalTimingField.LESSON) 180 else 360,
+            onDismiss = { globalField = null },
+            onConfirm = { value ->
+                settings = if (field == GlobalTimingField.LESSON) {
+                    settings.copy(lessonDurationMinutes = value)
+                } else {
+                    settings.copy(breakDurationMinutes = value)
+                }
+                globalField = null
+            },
+        )
+    }
+
+    editingSection?.let { section ->
+        SectionTimeDialog(
+            section = section,
+            isBreakpoint = section.index in overrides.map(SectionTimingOverride::index),
+            onDismiss = { editingSection = null },
+            onConfirm = { startMinutes, endMinutes ->
+                settings = settings.copy(lessonDurationMinutes = endMinutes - startMinutes)
+                overrides.replaceStart(section.index, startMinutes)
+                editingSection = null
+            },
+            onRestoreAuto = {
+                overrides.removeAll { it.index == section.index && section.index != 1 }
+                editingSection = null
             },
         )
     }
 }
 
 @Composable
-private fun TimingSegmentCard(
-    number: Int,
-    segment: SectionTimingSegment,
-    sectionCount: Int,
-    otherStarts: Set<Int>,
-    isFirst: Boolean,
-    onChange: (SectionTimingSegment) -> Unit,
-    onRemove: () -> Unit,
-) {
-    val durationItems = (1..180).map { stringResource(R.string.sections_minutes, it) }
-    val breakItems = (0..360).map { stringResource(R.string.sections_minutes, it) }
+private fun TimingSettingButton(label: String, value: Int, onClick: () -> Unit, modifier: Modifier) {
+    OutlinedButton(onClick = onClick, modifier = modifier) {
+        Column {
+            Text(label, style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.sections_minutes, value))
+        }
+    }
+}
+
+@Composable
+private fun SectionTimeRow(section: PlannedSection, onClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row {
-                Text(stringResource(R.string.sections_segment, number), modifier = Modifier.weight(1f))
-                if (!isFirst) {
-                    TextButton(onClick = onRemove) { Text(stringResource(R.string.sections_remove_breakpoint)) }
-                }
-            }
-            if (isFirst) {
-                Text(
-                    text = stringResource(R.string.sections_start_section) + "：1",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            } else {
-                val availableStarts = (2..sectionCount).filter { it == segment.startIndex || it !in otherStarts }
-                LabeledWheel(
-                    label = stringResource(R.string.sections_start_section),
-                    items = availableStarts.map(Int::toString),
-                    selectedIndex = availableStarts.indexOf(segment.startIndex).coerceAtLeast(0),
-                    onSelectedChange = { onChange(segment.copy(startIndex = availableStarts[it])) },
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LabeledWheel(
-                    label = stringResource(R.string.sections_hour),
-                    items = (0..23).map { "%02d".format(it) },
-                    selectedIndex = (segment.startMinutes / 60).coerceIn(0, 23),
-                    onSelectedChange = { hour ->
-                        onChange(segment.copy(startMinutes = hour * 60 + segment.startMinutes % 60))
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-                LabeledWheel(
-                    label = stringResource(R.string.sections_minute),
-                    items = (0..59).map { "%02d".format(it) },
-                    selectedIndex = (segment.startMinutes % 60).coerceIn(0, 59),
-                    onSelectedChange = { minute ->
-                        onChange(segment.copy(startMinutes = segment.startMinutes / 60 * 60 + minute))
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LabeledWheel(
-                    label = stringResource(R.string.sections_lesson_duration),
-                    items = durationItems,
-                    selectedIndex = (segment.lessonDurationMinutes - 1).coerceIn(0, durationItems.lastIndex),
-                    onSelectedChange = { onChange(segment.copy(lessonDurationMinutes = it + 1)) },
-                    modifier = Modifier.weight(1f),
-                )
-                LabeledWheel(
-                    label = stringResource(R.string.sections_break_duration),
-                    items = breakItems,
-                    selectedIndex = segment.breakDurationMinutes.coerceIn(0, breakItems.lastIndex),
-                    onSelectedChange = { onChange(segment.copy(breakDurationMinutes = it)) },
-                    modifier = Modifier.weight(1f),
-                )
+            Text("第 ${section.index} 节", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = onClick) {
+                Text("${formatMinutes(section.startMinutes)} – ${formatMinutes(section.endMinutes)}")
             }
         }
     }
 }
 
 @Composable
-private fun TimingPreview(sections: List<PlannedSection>) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        sections.forEach { section ->
-            Text(
-                text = "第 ${section.index} 节  ${formatMinutes(section.startMinutes)} — ${formatMinutes(section.endMinutes)}",
-                style = MaterialTheme.typography.bodyMedium,
+private fun DurationDialog(
+    title: String,
+    selectedMinutes: Int,
+    minimum: Int,
+    maximum: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    var selectedIndex by remember(selectedMinutes) { mutableIntStateOf((selectedMinutes - minimum).coerceIn(0, maximum - minimum)) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            LabeledWheel(
+                label = title,
+                items = (minimum..maximum).map { "$it 分钟" },
+                selectedIndex = selectedIndex,
+                onSelectedChange = { selectedIndex = it },
             )
-        }
-    }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(selectedIndex + minimum) }) { Text(stringResource(DsR.string.action_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(DsR.string.action_cancel)) } },
+    )
 }
 
 @Composable
-private fun BreakpointDialog(
-    sectionCount: Int,
-    occupiedStarts: Set<Int>,
-    plannedSections: List<PlannedSection>,
+private fun SectionTimeDialog(
+    section: PlannedSection,
+    isBreakpoint: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (Int, Int) -> Unit,
+    onRestoreAuto: () -> Unit,
 ) {
-    val options = remember(sectionCount, occupiedStarts) { (2..sectionCount).filterNot(occupiedStarts::contains) }
-    var selectedIndex by remember(options) { mutableIntStateOf(0) }
-    val selectedSection = options.getOrElse(selectedIndex) { 2 }
-    val suggestedStart = plannedSections.firstOrNull { it.index == selectedSection }?.startMinutes ?: 8 * 60
+    var startHour by remember(section) { mutableIntStateOf(section.startMinutes / 60) }
+    var startMinute by remember(section) { mutableIntStateOf(section.startMinutes % 60) }
+    var endHour by remember(section) { mutableIntStateOf(section.endMinutes / 60) }
+    var endMinute by remember(section) { mutableIntStateOf(section.endMinutes % 60) }
+    val start = startHour * 60 + startMinute
+    val end = endHour * 60 + endMinute
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.sections_breakpoint_title)) },
+        title = { Text(stringResource(R.string.sections_edit_time, section.index)) },
         text = {
-            Column {
-                Text(stringResource(R.string.sections_breakpoint_hint))
-                LabeledWheel(
-                    label = stringResource(R.string.sections_start_section),
-                    items = options.map { "第 $it 节" },
-                    selectedIndex = selectedIndex.coerceIn(0, (options.size - 1).coerceAtLeast(0)),
-                    onSelectedChange = { selectedIndex = it },
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ClockWheelRow(
+                    label = stringResource(R.string.sections_start),
+                    hour = startHour,
+                    minute = startMinute,
+                    onHourChange = { startHour = it },
+                    onMinuteChange = { startMinute = it },
                 )
+                ClockWheelRow(
+                    label = stringResource(R.string.sections_end),
+                    hour = endHour,
+                    minute = endMinute,
+                    onHourChange = { endHour = it },
+                    onMinuteChange = { endMinute = it },
+                )
+                if (end <= start) Text(stringResource(R.string.sections_invalid, section.index), color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(selectedSection, suggestedStart) }) {
+            TextButton(onClick = { onConfirm(start, end) }, enabled = end > start) {
                 Text(stringResource(DsR.string.action_confirm))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(DsR.string.action_cancel)) }
+            Row {
+                if (isBreakpoint && section.index != 1) {
+                    TextButton(onClick = onRestoreAuto) { Text(stringResource(R.string.sections_restore_auto)) }
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(DsR.string.action_cancel)) }
+            }
         },
     )
+}
+
+@Composable
+private fun ClockWheelRow(
+    label: String,
+    hour: Int,
+    minute: Int,
+    onHourChange: (Int) -> Unit,
+    onMinuteChange: (Int) -> Unit,
+) {
+    Text(label, style = MaterialTheme.typography.titleSmall)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LabeledWheel(
+            label = stringResource(R.string.sections_hour),
+            items = (0..23).map { "%02d".format(it) },
+            selectedIndex = hour,
+            onSelectedChange = onHourChange,
+            modifier = Modifier.weight(1f),
+        )
+        LabeledWheel(
+            label = stringResource(R.string.sections_minute),
+            items = (0..59).map { "%02d".format(it) },
+            selectedIndex = minute,
+            onSelectedChange = onMinuteChange,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+private fun MutableList<SectionTimingOverride>.replaceStart(index: Int, startMinutes: Int) {
+    removeAll { it.index == index }
+    add(SectionTimingOverride(index, startMinutes))
 }
 
 private fun PlannedSection.toTemplate(): SectionTemplate =
     SectionTemplate(termId = 0L, index = index, startMinutes = startMinutes, endMinutes = endMinutes)
 
 private fun formatMinutes(minutes: Int): String = "%02d:%02d".format(minutes / 60, minutes % 60)
+
+private enum class GlobalTimingField { LESSON, BREAK }

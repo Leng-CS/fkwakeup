@@ -6,37 +6,37 @@ import org.junit.Test
 
 class SectionTimingPlannerTest {
     @Test
-    fun `single continuous segment calculates following lessons`() {
-        val plan = SectionTimingPlanner.build(4, listOf(SectionTimingSegment(1, 8 * 60, 45, 10)))
-
-        assertThat(plan).isInstanceOf(SectionTimingPlanResult.Valid::class.java)
-        val rows = (plan as SectionTimingPlanResult.Valid).sections
-        assertThat(rows.map { it.startMinutes to it.endMinutes }).containsExactly(
-            480 to 525, 535 to 580, 590 to 635, 645 to 690,
-        ).inOrder()
-    }
-
-    @Test
-    fun `afternoon breakpoint recalculates only its following lessons`() {
+    fun `first lesson and global durations recalculate following lessons`() {
         val plan = SectionTimingPlanner.build(
-            sectionCount = 8,
-            segments = listOf(
-                SectionTimingSegment(1, 480, 45, 10),
-                SectionTimingSegment(5, 840, 50, 15),
-            ),
+            sectionCount = 4,
+            settings = SectionTimingSettings(lessonDurationMinutes = 40, breakDurationMinutes = 5),
+            overrides = listOf(SectionTimingOverride(1, 8 * 60 + 30)),
         ) as SectionTimingPlanResult.Valid
 
-        assertThat(plan.sections[3].endMinutes).isEqualTo(690)
-        assertThat(plan.sections.drop(4).map { it.startMinutes to it.endMinutes }).containsExactly(
-            840 to 890, 905 to 955, 970 to 1020, 1035 to 1085,
+        assertThat(plan.sections.map { it.startMinutes to it.endMinutes }).containsExactly(
+            510 to 550, 555 to 595, 600 to 640, 645 to 685,
         ).inOrder()
     }
 
     @Test
-    fun `breakpoint cannot overlap the previous lesson`() {
+    fun `manual afternoon start becomes breakpoint and recalculates following lessons`() {
         val plan = SectionTimingPlanner.build(
-            4,
-            listOf(SectionTimingSegment(1, 480, 45, 10), SectionTimingSegment(3, 500, 45, 10)),
+            sectionCount = 6,
+            settings = SectionTimingSettings(40, 5),
+            overrides = listOf(SectionTimingOverride(1, 510), SectionTimingOverride(5, 14 * 60)),
+        ) as SectionTimingPlanResult.Valid
+
+        assertThat(plan.sections.drop(4).map { it.startMinutes to it.endMinutes }).containsExactly(
+            840 to 880, 885 to 925,
+        ).inOrder()
+    }
+
+    @Test
+    fun `breakpoint cannot overlap its previous lesson`() {
+        val plan = SectionTimingPlanner.build(
+            sectionCount = 4,
+            settings = SectionTimingSettings(40, 5),
+            overrides = listOf(SectionTimingOverride(1, 510), SectionTimingOverride(3, 550)),
         )
 
         assertThat(plan).isInstanceOf(SectionTimingPlanResult.Invalid::class.java)
@@ -44,19 +44,17 @@ class SectionTimingPlannerTest {
     }
 
     @Test
-    fun `saved table is grouped back into continuous segments`() {
-        val segments = SectionTimingPlanner.segmentsFrom(
-            listOf(
-                SectionTemplate(1, 1, 480, 525),
-                SectionTemplate(1, 2, 535, 580),
-                SectionTemplate(1, 3, 840, 890),
-                SectionTemplate(1, 4, 905, 955),
-            ),
+    fun `saved table restores global settings and manual breakpoints`() {
+        val templates = listOf(
+            SectionTemplate(1, 1, 510, 550),
+            SectionTemplate(1, 2, 555, 595),
+            SectionTemplate(1, 3, 840, 880),
+            SectionTemplate(1, 4, 885, 925),
         )
 
-        assertThat(segments).containsExactly(
-            SectionTimingSegment(1, 480, 45, 10),
-            SectionTimingSegment(3, 840, 50, 15),
+        assertThat(SectionTimingPlanner.settingsFrom(templates)).isEqualTo(SectionTimingSettings(40, 5))
+        assertThat(SectionTimingPlanner.overridesFrom(templates)).containsExactly(
+            SectionTimingOverride(1, 510), SectionTimingOverride(3, 840),
         ).inOrder()
     }
 }
