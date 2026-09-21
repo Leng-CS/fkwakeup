@@ -63,12 +63,17 @@ private val WEEKDAYS = listOf("周一", "周二", "周三", "周四", "周五", 
 fun ScheduleScreen(
     onImportClick: () -> Unit,
     onManageClick: () -> Unit,
+    targetDate: java.time.LocalDate? = null,
     modifier: Modifier = Modifier,
     viewModel: ScheduleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var editingBlock by remember { mutableStateOf<ScheduleBlock?>(null) }
+
+    LaunchedEffect(targetDate, state.term?.id) {
+        targetDate?.let(viewModel::showDate)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }

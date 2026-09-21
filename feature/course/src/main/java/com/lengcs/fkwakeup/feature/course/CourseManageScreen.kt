@@ -127,6 +127,7 @@ fun CourseManageScreen(
     onEditCourse: (Long) -> Unit,
     onManageTerms: () -> Unit,
     onManageSections: () -> Unit,
+    onManageWidgets: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: CourseManageViewModel = hiltViewModel(),
 ) {
@@ -152,6 +153,7 @@ fun CourseManageScreen(
                     }
                     TextButton(onClick = onManageTerms) { Text(stringResource(R.string.term_manage_title)) }
                     TextButton(onClick = onManageSections) { Text(stringResource(R.string.sections_title)) }
+                    TextButton(onClick = onManageWidgets) { Text(stringResource(R.string.course_widgets)) }
                 },
             )
         },

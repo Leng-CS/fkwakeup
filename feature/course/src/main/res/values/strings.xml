@@ -55,6 +55,7 @@
 
     <!-- 导出 -->
     <string name="course_export">导出</string>
+    <string name="course_widgets">小组件</string>
     <string name="export_chooser_title">导出课表</string>
     <string name="export_subject">课表-%1$s</string>
     <string name="export_empty">还没有课表可以导出</string>

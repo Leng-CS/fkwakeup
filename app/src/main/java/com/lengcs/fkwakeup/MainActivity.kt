@@ -1,6 +1,7 @@
 package com.lengcs.fkwakeup
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,40 +32,35 @@ import com.lengcs.fkwakeup.feature.course.SectionTemplateScreen
 import com.lengcs.fkwakeup.feature.course.TermManageScreen
 import com.lengcs.fkwakeup.feature.importexport.ImportFlow
 import com.lengcs.fkwakeup.feature.schedule.ScheduleScreen
+import com.lengcs.fkwakeup.feature.settings.WidgetSettingsScreen
 import dagger.hilt.android.AndroidEntryPoint
+import java.time.LocalDate
 
 object Routes {
     const val HOME = "home"
     const val IMPORT = "import"
     const val MANAGE = "manage"
+    const val WIDGET_SETTINGS = "widget-settings"
+    const val ALARM_PLACEHOLDER = "alarm-placeholder"
     const val COURSE_EDIT = "course/{courseId}"
     const val TERM = "term"
     const val SECTIONS = "sections"
-
     fun courseEdit(courseId: Long = 0L) = "course/$courseId"
 }
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    /**
-     * 分享进来的文本。放在 Activity 层，因为它有两个入口：
-     * 冷启动走 onCreate，App 已在运行时走 onNewIntent。
-     */
     private val incomingText = mutableStateOf<String?>(null)
+    private val widgetLink = mutableStateOf<Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        incomingText.value = intent?.getStringExtra(Intent.EXTRA_TEXT)
-
+        acceptIntent(intent)
         setContent {
             FkwakeupTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    FkwakeupApp(sharedText = incomingText.value)
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    FkwakeupApp(sharedText = incomingText.value, widgetLink = widgetLink.value)
                 }
             }
         }
@@ -73,34 +69,42 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        incomingText.value = intent.getStringExtra(Intent.EXTRA_TEXT)
+        acceptIntent(intent)
+    }
+
+    private fun acceptIntent(intent: Intent?) {
+        incomingText.value = intent?.getStringExtra(Intent.EXTRA_TEXT)
+        widgetLink.value = intent?.data?.takeIf { it.scheme == "fkwakeup" && it.host == "widget" }
     }
 }
 
 @Composable
-private fun FkwakeupApp(sharedText: String?) {
+private fun FkwakeupApp(sharedText: String?, widgetLink: Uri?) {
     val navController = rememberNavController()
+    val targetDate = widgetLink?.takeIf { it.lastPathSegment == "schedule" }
+        ?.getQueryParameter("date")?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
-    // 冷启动自带文本、或运行中被分享唤起，两种情况都要落到导入页
     LaunchedEffect(sharedText) {
-        if (!sharedText.isNullOrBlank()) {
-            navController.navigate(Routes.IMPORT) { launchSingleTop = true }
+        if (!sharedText.isNullOrBlank()) navController.navigate(Routes.IMPORT) { launchSingleTop = true }
+    }
+    LaunchedEffect(widgetLink) {
+        when (widgetLink?.lastPathSegment) {
+            "schedule" -> navController.navigate(Routes.HOME) { launchSingleTop = true }
+            "alarm" -> navController.navigate(Routes.ALARM_PLACEHOLDER) { launchSingleTop = true }
         }
     }
 
     NavHost(navController = navController, startDestination = Routes.HOME) {
         composable(Routes.HOME) {
-            // enableEdgeToEdge 之后必须让 Scaffold 处理系统栏内边距，
-            // 否则顶栏会被状态栏压住、按钮点不到
             Scaffold { padding ->
                 ScheduleScreen(
                     onImportClick = { navController.navigate(Routes.IMPORT) },
                     onManageClick = { navController.navigate(Routes.MANAGE) },
+                    targetDate = targetDate,
                     modifier = Modifier.padding(padding),
                 )
             }
         }
-
         composable(Routes.MANAGE) {
             CourseManageScreen(
                 onBack = { navController.popBackStack() },
@@ -108,29 +112,21 @@ private fun FkwakeupApp(sharedText: String?) {
                 onEditCourse = { id -> navController.navigate(Routes.courseEdit(id)) },
                 onManageTerms = { navController.navigate(Routes.TERM) },
                 onManageSections = { navController.navigate(Routes.SECTIONS) },
+                onManageWidgets = { navController.navigate(Routes.WIDGET_SETTINGS) },
             )
         }
-
-        composable(Routes.COURSE_EDIT) {
-            CourseEditScreen(onBack = { navController.popBackStack() })
-        }
-
-        composable(Routes.TERM) {
-            TermManageScreen(onBack = { navController.popBackStack() })
-        }
-
-        composable(Routes.SECTIONS) {
-            SectionTemplateScreen(onBack = { navController.popBackStack() })
-        }
+        composable(Routes.WIDGET_SETTINGS) { WidgetSettingsScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.ALARM_PLACEHOLDER) { AlarmPlaceholder(onBack = { navController.popBackStack() }) }
+        composable(Routes.COURSE_EDIT) { CourseEditScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.TERM) { TermManageScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.SECTIONS) { SectionTemplateScreen(onBack = { navController.popBackStack() }) }
         composable(Routes.IMPORT) {
             Scaffold { padding ->
                 ImportFlow(
                     onBack = { navController.popBackStack() },
                     initialText = sharedText,
                     onImported = {
-                        navController.navigate(Routes.HOME) {
-                            popUpTo(Routes.HOME) { inclusive = true }
-                        }
+                        navController.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } }
                     },
                     modifier = Modifier.padding(padding),
                 )
@@ -139,3 +135,16 @@ private fun FkwakeupApp(sharedText: String?) {
     }
 }
 
+@Composable
+private fun AlarmPlaceholder(onBack: () -> Unit) {
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text("课程提醒将在 M8 提供", style = MaterialTheme.typography.titleMedium)
+            Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) { Text("返回") }
+        }
+    }
+}

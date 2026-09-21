@@ -227,6 +227,13 @@ class ScheduleViewModel @Inject constructor(
         weekOffset.value += 1
     }
 
+    /** 小组件按日期打开时，将周视图切到该日期所在周。 */
+    fun showDate(date: LocalDate) {
+        val term = _uiState.value.term ?: return
+        val targetWeek = java.time.temporal.ChronoUnit.WEEKS.between(term.startMonday, date.with(java.time.DayOfWeek.MONDAY)).toInt() + 1
+        val currentWeek = CurrentWeekCalculator.status(term, LocalDate.now()).week
+        weekOffset.value = targetWeek.coerceIn(1, term.totalWeeks) - currentWeek
+    }
     fun backToCurrentWeek() {
         weekOffset.value = 0
     }
