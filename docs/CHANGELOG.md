@@ -12,11 +12,11 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ### #33 [需求] 节次时间表支持滚轮编辑与连续时段自动递推
 
-- Issue：[\#33](https://github.com/Leng-CS/fkwakeup/issues/33)；分支：`feat/section-time-smart-schedule`；commits `6d4c625`、`468f949`
-- 节次时间表改为滚轮设置起始时间、单节时长与课间时长，编辑页实时展开并预览所有节次；不再需要输入 `HH:mm`。
-- 可从任意后续节次添加独立断点，例如设置下午第一节后，其后的下午节次会按该断点自动递推；默认表中既有的午间、晚间间隔会被反推为断点。
+- Issue：[\#33](https://github.com/Leng-CS/fkwakeup/issues/33)；分支：`feat/section-time-smart-schedule`；修正 commit `eda9d78`
+- 节次保留原有的第 1 节至第 12 节连续列表；顶部只配置一组全局单节时长与课间时长，均使用滚轮，不再输入 `HH:mm`。
+- 点击某节的时间打开开始／结束滚轮。改结束时间会更新全局单节时长；改开始时间则将该节作为断点，之后节次按全局规则递推；断点可恢复自动递推。
 - 保存前同时校验单节起止顺序、相邻节次不能重叠、结果不得跨越当天；最终仍只保存既有 `SectionTemplate` 起止时间，未修改第 4、5 章数据契约。
-- 验证：`gradlew :core:common:test`、`gradlew :feature:course:compileDebugKotlin`、`gradlew testDebugUnitTest :app:assembleDebug` 全绿；Debug APK 已安装并在 `emulator-5554` 成功打开节次时间表，滚轮与默认断点显示正确。
+- 验证：`gradlew :core:common:test`、`gradlew :feature:course:compileDebugKotlin`、`gradlew testDebugUnitTest :app:assembleDebug` 全绿；Debug APK 已安装并在 `emulator-5554` 成功打开列表与时间滚轮弹窗。
 
 ### #32 [需求] 小组件改为可缩放、可滚动、按实例配置的课程列表
 
