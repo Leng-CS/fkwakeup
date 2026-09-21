@@ -46,12 +46,24 @@
     <string name="sections_title">节次时间表</string>
     <string name="sections_hint">各校节次时间不同，这里设置后课表与小组件都会按它显示</string>
     <string name="sections_add">+ 添加节次</string>
-    <string name="sections_start">开始</string>
-    <string name="sections_end">结束</string>
+    <string name="sections_remove_last">− 删除最后一节</string>
     <string name="sections_reset">恢复默认</string>
-    <string name="sections_time_hint">HH:mm</string>
     <string name="sections_saved">已保存</string>
     <string name="sections_invalid">第 %1$d 节时间有误（结束需晚于开始）</string>
+    <string name="sections_count">共 %1$d 节</string>
+    <string name="sections_segment">连续时段 %1$d</string>
+    <string name="sections_start_section">起始节次</string>
+    <string name="sections_hour">小时</string>
+    <string name="sections_minute">分钟</string>
+    <string name="sections_lesson_duration">单节时长</string>
+    <string name="sections_break_duration">课间时长</string>
+    <string name="sections_minutes">%1$d 分钟</string>
+    <string name="sections_add_breakpoint">+ 添加断点</string>
+    <string name="sections_remove_breakpoint">删除断点</string>
+    <string name="sections_breakpoint_title">选择断点节次</string>
+    <string name="sections_breakpoint_hint">断点的开始时间、单节时长与课间时长可单独设置，之后的节次会自动递推。</string>
+    <string name="sections_preview">节次预览</string>
+    <string name="sections_invalid_order">第 %1$d 节结束时间不得晚于第 %2$d 节开始时间</string>
 
     <!-- 导出 -->
     <string name="course_export">导出</string>
