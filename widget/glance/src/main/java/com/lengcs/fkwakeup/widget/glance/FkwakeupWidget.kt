@@ -53,7 +53,8 @@ class FkwakeupWidget : GlanceAppWidget() {
             courseRepository = deps.courseRepository(),
             settingsRepository = deps.settingsRepository(),
         ).load(range = config.range)
-        provideContent { WidgetContent(data, config, context) }
+        val imageBackground = withContext(Dispatchers.IO) { config.imageBackground(context) }
+        provideContent { WidgetContent(data, config, imageBackground, context) }
     }
 
     companion object {
@@ -70,12 +71,12 @@ class FkwakeupWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun WidgetContent(data: WidgetData?, config: WidgetConfig, context: Context) {
+private fun WidgetContent(data: WidgetData?, config: WidgetConfig, imageBackground: androidx.glance.ImageProvider?, context: Context) {
     // 根节点故意不响应点击：否则会吞掉桌面长按的移除/调整大小菜单。
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
-            .then(config.backgroundModifier())
+            .then(config.backgroundModifier(imageBackground))
             .padding(10.dp),
     ) {
         when {
