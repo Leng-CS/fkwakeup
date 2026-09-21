@@ -110,12 +110,19 @@ internal fun SectionTimingEditor(
             maximum = if (field == GlobalTimingField.LESSON) 180 else 360,
             onDismiss = { globalField = null },
             onConfirm = { value ->
-                settings = if (field == GlobalTimingField.LESSON) {
+                val proposedSettings = if (field == GlobalTimingField.LESSON) {
                     settings.copy(lessonDurationMinutes = value)
                 } else {
                     settings.copy(breakDurationMinutes = value)
                 }
-                globalField = null
+                when (val proposedPlan = SectionTimingPlanner.build(sectionCount, proposedSettings, overrides)) {
+                    is SectionTimingPlanResult.Valid -> {
+                        settings = proposedSettings
+                        globalField = null
+                        null
+                    }
+                    is SectionTimingPlanResult.Invalid -> proposedPlan.message
+                }
             },
         )
     }
@@ -126,9 +133,18 @@ internal fun SectionTimingEditor(
             isBreakpoint = section.index in overrides.map(SectionTimingOverride::index),
             onDismiss = { editingSection = null },
             onConfirm = { startMinutes, endMinutes ->
-                settings = settings.copy(lessonDurationMinutes = endMinutes - startMinutes)
-                overrides.replaceStart(section.index, startMinutes)
-                editingSection = null
+                val proposedSettings = settings.copy(lessonDurationMinutes = endMinutes - startMinutes)
+                val proposedOverrides = overrides.toMutableList().apply { replaceStart(section.index, startMinutes) }
+                when (val proposedPlan = SectionTimingPlanner.build(sectionCount, proposedSettings, proposedOverrides)) {
+                    is SectionTimingPlanResult.Valid -> {
+                        settings = proposedSettings
+                        overrides.clear()
+                        overrides.addAll(proposedOverrides)
+                        editingSection = null
+                        null
+                    }
+                    is SectionTimingPlanResult.Invalid -> proposedPlan.message
+                }
             },
             onRestoreAuto = {
                 overrides.removeAll { it.index == section.index && section.index != 1 }
@@ -170,9 +186,10 @@ private fun DurationDialog(
     minimum: Int,
     maximum: Int,
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
+    onConfirm: (Int) -> String?,
 ) {
     var selectedIndex by remember(selectedMinutes) { mutableIntStateOf((selectedMinutes - minimum).coerceIn(0, maximum - minimum)) }
+    var validationError by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -181,10 +198,18 @@ private fun DurationDialog(
                 label = title,
                 items = (minimum..maximum).map { "$it 分钟" },
                 selectedIndex = selectedIndex,
-                onSelectedChange = { selectedIndex = it },
+                onSelectedChange = {
+                    selectedIndex = it
+                    validationError = null
+                },
             )
+            validationError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(selectedIndex + minimum) }) { Text(stringResource(DsR.string.action_confirm)) } },
+        confirmButton = {
+            TextButton(onClick = { validationError = onConfirm(selectedIndex + minimum) }) {
+                Text(stringResource(DsR.string.action_confirm))
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(DsR.string.action_cancel)) } },
     )
 }
@@ -194,7 +219,7 @@ private fun SectionTimeDialog(
     section: PlannedSection,
     isBreakpoint: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (Int, Int) -> Unit,
+    onConfirm: (Int, Int) -> String?,
     onRestoreAuto: () -> Unit,
 ) {
     var startHour by remember(section) { mutableIntStateOf(section.startMinutes / 60) }
@@ -203,6 +228,7 @@ private fun SectionTimeDialog(
     var endMinute by remember(section) { mutableIntStateOf(section.endMinutes % 60) }
     val start = startHour * 60 + startMinute
     val end = endHour * 60 + endMinute
+    var validationError by remember(section) { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -213,21 +239,25 @@ private fun SectionTimeDialog(
                     label = stringResource(R.string.sections_start),
                     hour = startHour,
                     minute = startMinute,
-                    onHourChange = { startHour = it },
-                    onMinuteChange = { startMinute = it },
+                    onHourChange = { startHour = it; validationError = null },
+                    onMinuteChange = { startMinute = it; validationError = null },
                 )
                 ClockWheelRow(
                     label = stringResource(R.string.sections_end),
                     hour = endHour,
                     minute = endMinute,
-                    onHourChange = { endHour = it },
-                    onMinuteChange = { endMinute = it },
+                    onHourChange = { endHour = it; validationError = null },
+                    onMinuteChange = { endMinute = it; validationError = null },
                 )
-                if (end <= start) Text(stringResource(R.string.sections_invalid, section.index), color = MaterialTheme.colorScheme.error)
+                val error = validationError ?: if (end <= start) stringResource(R.string.sections_invalid, section.index) else null
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(start, end) }, enabled = end > start) {
+            TextButton(
+                onClick = { validationError = onConfirm(start, end) },
+                enabled = end > start,
+            ) {
                 Text(stringResource(DsR.string.action_confirm))
             }
         },

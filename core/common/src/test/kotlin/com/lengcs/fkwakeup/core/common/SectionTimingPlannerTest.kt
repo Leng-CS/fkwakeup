@@ -44,6 +44,18 @@ class SectionTimingPlannerTest {
     }
 
     @Test
+    fun `longer lesson duration cannot overlap a later manually set lesson`() {
+        val plan = SectionTimingPlanner.build(
+            sectionCount = 2,
+            settings = SectionTimingSettings(60, 5),
+            overrides = listOf(SectionTimingOverride(1, 480), SectionTimingOverride(2, 520)),
+        )
+
+        assertThat(plan).isInstanceOf(SectionTimingPlanResult.Invalid::class.java)
+        assertThat((plan as SectionTimingPlanResult.Invalid).message).contains("第 1 节")
+    }
+
+    @Test
     fun `saved table restores global settings and manual breakpoints`() {
         val templates = listOf(
             SectionTemplate(1, 1, 510, 550),
