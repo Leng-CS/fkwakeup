@@ -10,6 +10,15 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ## M9 · MVP 后打磨与问题修复
 
+### #34 [需求] 统一轻松柔和的卡通视觉风格
+
+- Issue：[#34](https://github.com/Leng-CS/fkwakeup/issues/34)；分支：`feat/soft-cartoon-ui`；实现 commit `73a498c`
+- 建立「云朵课表」视觉语言：奶油纸张底色、蓝莓主色、蜜桃与薄荷点缀；补齐浅色/深色 ColorScheme、全局圆角和字体层级，并默认关闭会覆盖产品配色的系统动态取色。
+- 周视图改为分层主信息卡、圆形周切换、薄荷色今天胶囊与贴纸式课程块；保留时间、课名、地点、灰化和当前课程边框等全部信息与状态逻辑。
+- 课程管理把拥挤在顶栏的导出/学期/节次/小组件入口整理成两行工具区；导入流程用三组柔和容器区分步骤、AI 操作和文件操作。
+- 新增 `docs/ui-style-guide.md` 与 2 个主题对比度测试，核心文字/背景组合均达到 `4.5:1`；未修改第 4、5 章数据契约。
+- 验证：`gradlew testDebugUnitTest :app:assembleDebug` 全绿；Debug APK 已安装到 `Pixel_8_API_35`，使用 5 门课程实测浅色/深色周视图、课程管理、导入输入与导入预览，无遮挡或崩溃。
+
 ### #33 [需求] 节次时间表支持滚轮编辑与连续时段自动递推
 
 - Issue：[\#33](https://github.com/Leng-CS/fkwakeup/issues/33)；分支：`feat/section-time-smart-schedule`；修正 commit `eda9d78`
