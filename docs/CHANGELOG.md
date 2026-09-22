@@ -17,6 +17,15 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ## M9 · MVP 后打磨与问题修复
 
+### #39 [需求] 支持异步网课与直播网课
+
+- Issue：[#39](https://github.com/Leng-CS/fkwakeup/issues/39)；分支：`feat/online-course-support`；实现 commits `970051a`、`9f6decd`、`4fa50df`、`0b2bc00`、`2173724`
+- 数据契约升级为 `campus-timetable v1.1`，新增直播授课方式和可重复的异步网课开放期，同时继续兼容 v1.0 导入；导出统一生成 v1.1。
+- Room 数据库升级到 v2 并提供显式迁移；课程编辑页支持线下／直播切换、平台和链接，以及按日期配置多个异步开放期。完全位于学期外的开放期禁止保存，跨学期边界时提示但允许保存。
+- 周视图增加可折叠网课区，按进行中、未开始、已结束排序；已结束课程灰化并默认折叠。网课卡片进入 App 内课程详情，链接从详情页打开，提醒按钮进入 M8 占位页。
+- 直播时间段和异步开放期均不进入桌面小组件；导入预览、实际落库、课程管理计数与识别提示词均已接入新结构。
+- 验证：`gradlew testDebugUnitTest :app:assembleDebug`、`gradlew :app:lintDebug :widget:glance:lintDebug` 全绿；Debug APK 在 `emulator-5554` 覆盖安装后数据库迁移成功，并实测新建异步网课、保存及周视图展示无崩溃。
+
 ### #36 [需求] 建立自动化 APK 发布流程
 
 - Issue：[#36](https://github.com/Leng-CS/fkwakeup/issues/36)；分支：`feat/automated-apk-release`；实现 commits `fb44305`、`1bb4845`、`98fc0f6`
