@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.ui.graphics.Color
-import androidx.glance.BitmapImageProvider
 import androidx.glance.GlanceModifier
 import androidx.glance.ImageProvider
 import androidx.glance.background
@@ -25,7 +24,7 @@ internal fun WidgetConfig.imageBackground(context: Context): ImageProvider? = wh
     WidgetBackgroundType.PRESET_IMAGE -> presetProvider()
     WidgetBackgroundType.PHOTO -> imageUri?.let { uri ->
         context.contentResolver.openInputStream(Uri.parse(uri))?.use(BitmapFactory::decodeStream)
-            ?.let(::scaledWithOpacity)?.let(::BitmapImageProvider)
+            ?.let(::scaledWithOpacity)?.let(::ImageProvider)
     }
     else -> null
 }
@@ -54,7 +53,7 @@ private fun WidgetConfig.presetProvider(): ImageProvider = when (imagePreset) {
 
 /** 用像素数组生成渐变，避免在 Glance 小组件中使用 Canvas。 */
 private fun WidgetConfig.gradientProvider(from: Int, to: Int): ImageProvider =
-    BitmapImageProvider(createGradient(from, to, backgroundAlpha))
+    ImageProvider(createGradient(from, to, backgroundAlpha))
 
 private fun createGradient(from: Int, to: Int, opacity: Float): Bitmap {
     val width = 64
