@@ -2,6 +2,8 @@ package com.lengcs.fkwakeup.feature.schedule
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -80,7 +82,11 @@ fun ScheduleScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
         ScheduleTopBar(
             termName = state.term?.name,
             displayWeek = state.displayWeek,
@@ -175,65 +181,70 @@ private fun ScheduleTopBar(
         if (isCurrentWeek) append(" · ").append(stringResource(R.string.schedule_week_current))
     }
 
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.primaryContainer,
     ) {
-        // 左侧文字区吃掉剩余空间，按钮区保持固定宽度，互不挤压
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 12.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = termName ?: stringResource(R.string.schedule_title),
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = weekText,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = termName ?: stringResource(R.string.schedule_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = weekText,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                    )
+                }
+                NavButton(text = "‹", desc = prevDesc, onClick = onPrev)
+                if (!isCurrentWeek) {
+                    NavButton(text = "•", desc = todayDesc, onClick = onToday)
+                }
+                NavButton(text = "›", desc = nextDesc, onClick = onNext)
+            }
 
-        // 常驻导入入口（#25）。空课表时 onImport 为 null，这里就不渲染 ——
-        // 那时页面中央已有主 CTA「导入课表」。
-        // 放在「管理」左侧：两者都是横向导航/动作入口，成一组。
-        onImport?.let { importClick ->
-            TextButton(
-                onClick = importClick,
-                modifier = Modifier.height(36.dp),
-                contentPadding = PaddingValues(horizontal = 6.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(R.string.schedule_import),
-                    style = MaterialTheme.typography.labelSmall,
-                )
+                // 导入与管理保持在独立操作行，周次切换不再和文字互相挤压。
+                onImport?.let { importClick ->
+                    TextButton(
+                        onClick = importClick,
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.schedule_import),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
+
+                TextButton(
+                    onClick = onManage,
+                    modifier = Modifier.height(32.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.schedule_manage),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
             }
         }
-
-        TextButton(
-            onClick = onManage,
-            modifier = Modifier.height(36.dp),
-            contentPadding = PaddingValues(horizontal = 6.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.schedule_manage),
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
-
-        // 紧凑的周切换按钮；「回到本周」只在非本周时出现，避免本周时挤占文字区
-        NavButton(text = "<", desc = prevDesc, onClick = onPrev)
-        if (!isCurrentWeek) {
-            NavButton(text = "·", desc = todayDesc, onClick = onToday)
-        }
-        NavButton(text = ">", desc = nextDesc, onClick = onNext)
     }
 }
 
@@ -246,16 +257,28 @@ private fun NavButton(
     IconButton(
         onClick = onClick,
         modifier = Modifier
-            .size(36.dp)
+            .padding(start = 4.dp)
+            .size(34.dp)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.82f), CircleShape)
             .semantics { contentDescription = desc },
     ) {
-        Text(text, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
 @Composable
 private fun WeekdayHeader(todayDayOfWeek: Int?) {
-    Row(modifier = Modifier.fillMaxWidth().height(32.dp)) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(38.dp)
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
         Box(modifier = Modifier.width(SECTION_COLUMN_WIDTH))
         WEEKDAYS.forEachIndexed { index, label ->
             val isToday = todayDayOfWeek == index + 1
@@ -263,20 +286,22 @@ private fun WeekdayHeader(todayDayOfWeek: Int?) {
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .then(
-                        if (isToday) {
-                            Modifier.background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 2.dp, vertical = 4.dp)
+                    .background(
+                        color = if (isToday) {
+                            MaterialTheme.colorScheme.tertiaryContainer
                         } else {
-                            Modifier
+                            Color.Transparent
                         },
+                        shape = MaterialTheme.shapes.small,
                     ),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = if (isToday) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
+                        MaterialTheme.colorScheme.onTertiaryContainer
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
@@ -291,21 +316,26 @@ private fun SectionColumn(
     sections: List<SectionTemplate>,
     currentSection: Int?,
 ) {
-    Column(modifier = Modifier.width(SECTION_COLUMN_WIDTH)) {
+    Column(
+        modifier = Modifier
+            .width(SECTION_COLUMN_WIDTH)
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
         sections.forEach { section ->
             val isCurrent = currentSection == section.index
             Box(
                 modifier = Modifier
                     .height(ROW_HEIGHT)
                     .fillMaxWidth()
-                    .then(
-                        if (isCurrent) {
-                            Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(3.dp)
+                    .background(
+                        color = if (isCurrent) {
+                            MaterialTheme.colorScheme.secondaryContainer
                         } else {
-                            Modifier
+                            Color.Transparent
                         },
-                    )
-                    .padding(2.dp),
+                        shape = MaterialTheme.shapes.small,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -343,7 +373,12 @@ private fun ScheduleGrid(
         val columnWidth: Dp = maxWidth / 7
         val gridHeight: Dp = ROW_HEIGHT * sectionCount.coerceAtLeast(1)
 
-        Box(modifier = Modifier.height(gridHeight).fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .height(gridHeight)
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface),
+        ) {
             // 底层：7 列网格线
             Row(modifier = Modifier.matchParentSize()) {
                 repeat(7) { index ->
@@ -355,7 +390,7 @@ private fun ScheduleGrid(
                             .then(
                                 if (isToday) {
                                     Modifier.background(
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f),
+                                        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
                                     )
                                 } else {
                                     Modifier
@@ -413,21 +448,20 @@ private fun CourseBlockCard(
         Color.White
     }
 
+    val cardShape = RoundedCornerShape(10.dp)
     Surface(
         modifier = Modifier
             .fillMaxSize()
-            .then(
-                if (phase == BlockPhase.Ongoing) {
-                    Modifier.border(
-                        width = 1.5.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = MaterialTheme.shapes.small,
-                    )
+            .border(
+                width = if (phase == BlockPhase.Ongoing) 2.dp else 1.dp,
+                color = if (phase == BlockPhase.Ongoing) {
+                    MaterialTheme.colorScheme.primary
                 } else {
-                    Modifier
+                    Color.White.copy(alpha = 0.58f)
                 },
+                shape = cardShape,
             ),
-        shape = MaterialTheme.shapes.small,
+        shape = cardShape,
         color = baseColor,
         contentColor = onBlockColor,
     ) {

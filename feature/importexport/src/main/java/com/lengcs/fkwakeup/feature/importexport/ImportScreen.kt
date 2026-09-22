@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -48,7 +49,11 @@ fun ImportScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        TabRow(selectedTabIndex = tabIndex) {
+        TabRow(
+            selectedTabIndex = tabIndex,
+            modifier = Modifier.clip(MaterialTheme.shapes.medium),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ) {
             tabs.forEachIndexed { index, title ->
                 Tab(selected = tabIndex == index, onClick = { tabIndex = index }, text = { Text(title) })
             }
@@ -69,7 +74,12 @@ private fun AiTab(viewModel: ImportViewModel) {
 
     GuideCard()
 
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -109,7 +119,12 @@ private fun FileTab(viewModel: ImportViewModel) {
         }
     }
 
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        ),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -167,18 +182,28 @@ private fun PasteArea(viewModel: ImportViewModel) {
 
 @Composable
 private fun GuideCard() {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+    ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(stringResource(R.string.import_step_1), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = stringResource(R.string.import_guide_title),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            Text(stringResource(R.string.import_step_1), style = MaterialTheme.typography.labelLarge)
             BulletLine(stringResource(R.string.import_step_1_tip1))
             BulletLine(stringResource(R.string.import_step_1_tip2))
             BulletLine(stringResource(R.string.import_step_1_tip3))
-            Text(stringResource(R.string.import_step_2), style = MaterialTheme.typography.bodyMedium)
-            Text(stringResource(R.string.import_step_3), style = MaterialTheme.typography.bodyMedium)
-            Text(stringResource(R.string.import_step_4), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.import_step_2), style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.import_step_3), style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.import_step_4), style = MaterialTheme.typography.labelLarge)
         }
     }
 }

@@ -6,6 +6,8 @@
     <string name="course_empty">还没有课程，点上面新增</string>
     <string name="course_session_count">%1$d 个时间段</string>
     <string name="course_delete_done">已删除「%1$s」</string>
+    <string name="course_overview">共 %1$d 门课程 · 点击课程即可编辑</string>
+    <string name="course_tools">课表工具</string>
 
     <!-- 课程编辑 -->
     <string name="edit_title_new">新建课程</string>

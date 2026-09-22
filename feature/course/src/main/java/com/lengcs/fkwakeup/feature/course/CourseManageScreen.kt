@@ -1,9 +1,13 @@
 package com.lengcs.fkwakeup.feature.course
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,7 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -26,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
@@ -36,6 +43,7 @@ import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
 import com.lengcs.fkwakeup.core.database.repository.CurrentTermProvider
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
+import com.lengcs.fkwakeup.core.designsystem.palette.CoursePalette
 import com.lengcs.fkwakeup.core.exporter.TimetableExporter
 import com.lengcs.fkwakeup.core.model.CourseWithSessions
 import com.lengcs.fkwakeup.core.model.SectionTemplate
@@ -146,15 +154,7 @@ fun CourseManageScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.course_manage_title)) },
-                navigationIcon = { TextButton(onClick = onBack) { Text("<") } },
-                actions = {
-                    TextButton(onClick = { exportTimetable(context, viewModel, scope, snackbarHostState) }) {
-                        Text(stringResource(R.string.course_export))
-                    }
-                    TextButton(onClick = onManageTerms) { Text(stringResource(R.string.term_manage_title)) }
-                    TextButton(onClick = onManageSections) { Text(stringResource(R.string.sections_title)) }
-                    TextButton(onClick = onManageWidgets) { Text(stringResource(R.string.course_widgets)) }
-                },
+                navigationIcon = { TextButton(onClick = onBack) { Text("‹") } },
             )
         },
     ) { padding ->
@@ -162,24 +162,81 @@ fun CourseManageScreen(
             modifier = modifier
                 .padding(padding)
                 .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // 填充样式的按钮：以前是 labelSmall 的 TextButton，看着像一行文字链接，
-            // 和旁边的「导出 / 学期管理 / 节次时间表」混在一起时不明显（#28）
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = term?.name ?: stringResource(R.string.course_manage_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.course_overview, courses.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.course_tools),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 18.dp),
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ToolButton(
+                    text = stringResource(R.string.course_export),
+                    onClick = { exportTimetable(context, viewModel, scope, snackbarHostState) },
+                    modifier = Modifier.weight(1f),
+                )
+                ToolButton(
+                    text = stringResource(R.string.term_manage_title),
+                    onClick = onManageTerms,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ToolButton(
+                    text = stringResource(R.string.sections_title),
+                    onClick = onManageSections,
+                    modifier = Modifier.weight(1f),
+                )
+                ToolButton(
+                    text = stringResource(R.string.course_widgets),
+                    onClick = onManageWidgets,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
             Button(
                 onClick = onAddCourse,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(horizontal = 16.dp),
             ) {
                 Text(stringResource(R.string.course_add))
-            }
-
-            term?.let {
-                Text(
-                    text = it.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
             }
 
             if (courses.isEmpty()) {
@@ -200,6 +257,17 @@ fun CourseManageScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ToolButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FilledTonalButton(onClick = onClick, modifier = modifier) {
+        Text(text = text, maxLines = 1)
     }
 }
 
@@ -238,15 +306,29 @@ private fun CourseRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .padding(horizontal = 12.dp, vertical = 3.dp)
             .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .size(12.dp)
+                    .background(
+                        color = CoursePalette.resolve(
+                            customArgb = entry.course.colorArgb,
+                            name = entry.course.name,
+                        ),
+                        shape = CircleShape,
+                    ),
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(entry.course.name, style = MaterialTheme.typography.bodyLarge)
                 entry.course.teacher?.let {
