@@ -5,6 +5,11 @@ import com.lengcs.fkwakeup.core.importer.model.ErrorCodes
 import com.lengcs.fkwakeup.core.importer.model.ImportDraft
 import com.lengcs.fkwakeup.core.importer.model.ImportError
 import com.lengcs.fkwakeup.core.importer.model.SessionDraft
+import com.lengcs.fkwakeup.core.importer.model.OnlineWindowDraft
+import com.lengcs.fkwakeup.core.common.OnlineCourseTimeline
+import com.lengcs.fkwakeup.core.model.OnlineCourseWindow
+import com.lengcs.fkwakeup.core.model.Term
+import java.time.Instant
 
 /**
  * L2 校验：把草稿里的每一条问题变成**可定位**的错误（第 N 条）。
@@ -26,6 +31,9 @@ object TimetableValidator {
 
         for (session in draft.sessions) {
             errors += validateSession(session, totalWeeks, limit)
+        }
+        for (window in draft.onlineWindows) {
+            errors += validateOnlineWindow(window, draft)
         }
         return errors
     }
@@ -88,6 +96,44 @@ object TimetableValidator {
             )
         }
 
+        if (session.deliveryMode == null) {
+            errors += ImportError(
+                ErrorCodes.DELIVERY_MODE,
+                "第 $i 条记录：授课方式应为线下或直播",
+                i,
+            )
+        }
+
+        return errors
+    }
+
+    private fun validateOnlineWindow(window: OnlineWindowDraft, draft: ImportDraft): List<ImportError> {
+        val errors = mutableListOf<ImportError>()
+        val i = window.index
+        if (window.name.isNullOrBlank()) {
+            errors += ImportError(ErrorCodes.FORMAT, "第 $i 条网课记录缺少课程名", i)
+        }
+        val start = window.startDate
+        val end = window.endDate
+        if (start == null || end == null || end.isBefore(start)) {
+            errors += ImportError(ErrorCodes.ONLINE_DATE, "第 $i 条网课：开放日期格式错误或结束日期早于开始日期", i)
+            return errors
+        }
+        val termDraft = draft.term ?: return errors
+        val term = Term(
+            name = termDraft.name,
+            startMonday = termDraft.startMonday,
+            totalWeeks = termDraft.totalWeeks,
+            createdAt = Instant.EPOCH,
+        )
+        val domainWindow = OnlineCourseWindow(
+            courseId = 0L,
+            startDate = start,
+            endDate = end,
+        )
+        if (!OnlineCourseTimeline.overlapsTerm(domainWindow, term)) {
+            errors += ImportError(ErrorCodes.ONLINE_DATE, "第 $i 条网课：开放期与学期没有重叠", i)
+        }
         return errors
     }
 }

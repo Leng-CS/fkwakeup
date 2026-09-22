@@ -2,7 +2,9 @@ package com.lengcs.fkwakeup.core.importer
 
 import com.google.common.truth.Truth.assertThat
 import com.lengcs.fkwakeup.core.importer.model.SessionDraft
+import com.lengcs.fkwakeup.core.importer.model.OnlineWindowDraft
 import org.junit.Test
+import java.time.LocalDate
 
 class CourseMergerTest {
 
@@ -77,5 +79,25 @@ class CourseMergerTest {
             .isEqualTo(CourseMerger.mergeKey(" 数学 ", "张伟"))
         assertThat(CourseMerger.mergeKey("数学", "张伟"))
             .isNotEqualTo(CourseMerger.mergeKey("数学", "李娜"))
+    }
+
+    @Test
+    fun `同名同教师的时间段与开放期归为同一门课`() {
+        val window = OnlineWindowDraft(
+            index = 1,
+            name = "高等数学A",
+            teacher = "张伟",
+            startDate = LocalDate.parse("2026-09-01"),
+            endDate = LocalDate.parse("2026-12-31"),
+            platform = "学习通",
+            url = null,
+            note = null,
+        )
+
+        val merged = CourseMerger.merge(listOf(draft(1, "高等数学A")), listOf(window))
+
+        assertThat(merged).hasSize(1)
+        assertThat(merged.single().sessions).hasSize(1)
+        assertThat(merged.single().onlineWindows).hasSize(1)
     }
 }

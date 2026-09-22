@@ -7,6 +7,8 @@ import com.lengcs.fkwakeup.core.model.CourseSession
 import com.lengcs.fkwakeup.core.model.CourseWithSessions
 import com.lengcs.fkwakeup.core.model.SectionTemplate
 import com.lengcs.fkwakeup.core.model.Term
+import com.lengcs.fkwakeup.core.model.OnlineCourseWindow
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
@@ -36,7 +38,27 @@ class TimetableExporterTest {
             course = Course(id = 1L, termId = 1L, name = "高等数学A", teacher = "张伟"),
             sessions = listOf(
                 CourseSession(1L, 1L, dayOfWeek = 1, startSection = 1, endSection = 2, weekSpec = "1-16", location = "教三-301"),
-                CourseSession(2L, 1L, dayOfWeek = 3, startSection = 3, endSection = 4, weekSpec = "2-16双", location = "教三-301"),
+                CourseSession(
+                    2L,
+                    1L,
+                    dayOfWeek = 3,
+                    startSection = 3,
+                    endSection = 4,
+                    weekSpec = "2-16双",
+                    deliveryMode = SessionDeliveryMode.LIVE_ONLINE,
+                    onlinePlatform = "腾讯会议",
+                    onlineUrl = "https://example.edu/live",
+                ),
+            ),
+            onlineWindows = listOf(
+                OnlineCourseWindow(
+                    id = 1L,
+                    courseId = 1L,
+                    startDate = LocalDate.parse("2026-09-01"),
+                    endDate = LocalDate.parse("2026-12-31"),
+                    platform = "学习通",
+                    url = "https://example.edu/course",
+                ),
             ),
         ),
         CourseWithSessions(
@@ -53,7 +75,7 @@ class TimetableExporterTest {
         val json = TimetableExporter.export(term, sections, courses)
         assertThat(json).contains("\"format\"" )
         assertThat(json).contains("campus-timetable")
-        assertThat(json).contains("1.0")
+        assertThat(json).contains("1.1")
 
         val result = TimetableImporter.import(json)
         assertThat(result.errors).isEmpty()
@@ -122,6 +144,20 @@ class TimetableExporterTest {
         assertThat(templates!!.first().startMinutes).isEqualTo(480)
         assertThat(templates!!.first().endMinutes).isEqualTo(525)
         assertThat(templates.last().index).isEqualTo(6)
+    }
+
+    @Test
+    fun `直播与异步网课字段可往返`() {
+        val result = TimetableImporter.import(TimetableExporter.export(term, sections, courses))
+        val math = result.courses.first { it.name == "高等数学A" }
+
+        val live = math.sessions.first { it.deliveryMode == SessionDeliveryMode.LIVE_ONLINE }
+        assertThat(live.onlinePlatform).isEqualTo("腾讯会议")
+        assertThat(live.onlineUrl).isEqualTo("https://example.edu/live")
+        assertThat(math.onlineWindows).hasSize(1)
+        assertThat(math.onlineWindows.single().startDate).isEqualTo(LocalDate.parse("2026-09-01"))
+        assertThat(math.onlineWindows.single().endDate).isEqualTo(LocalDate.parse("2026-12-31"))
+        assertThat(math.onlineWindows.single().platform).isEqualTo("学习通")
     }
 
     @Test

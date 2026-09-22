@@ -2,6 +2,7 @@ package com.lengcs.fkwakeup.core.importer
 
 import com.lengcs.fkwakeup.core.importer.model.MergedCourse
 import com.lengcs.fkwakeup.core.importer.model.SessionDraft
+import com.lengcs.fkwakeup.core.importer.model.OnlineWindowDraft
 
 /**
  * 课程归并：把扁平的时间段列表归成「一门课 + 多个时间段」。
@@ -11,8 +12,10 @@ import com.lengcs.fkwakeup.core.importer.model.SessionDraft
  */
 object CourseMerger {
 
-    fun merge(sessions: List<SessionDraft>): List<MergedCourse> {
-        val grouped = linkedMapOf<String, MutableList<SessionDraft>>()
+    fun merge(
+        sessions: List<SessionDraft>,
+        onlineWindows: List<OnlineWindowDraft> = emptyList(),
+    ): List<MergedCourse> {
         val keyToCourse = linkedMapOf<String, MergedCourse>()
 
         for (session in sessions) {
@@ -20,15 +23,27 @@ object CourseMerger {
             if (name.isEmpty()) continue // 无名记录由校验阶段报错，不参与归并
 
             val key = mergeKey(name, session.teacher)
-            grouped.getOrPut(key) { mutableListOf() }.add(session)
-            keyToCourse.getOrPut(key) {
+            val course = keyToCourse.getOrPut(key) {
                 MergedCourse(name = name, teacher = session.teacher, sessions = emptyList())
             }
+            keyToCourse[key] = course.copy(sessions = course.sessions + session)
         }
 
-        return grouped.map { (key, list) ->
-            val course = keyToCourse.getValue(key)
-            course.copy(sessions = list.sortedWith(compareBy({ it.dayOfWeek ?: 0 }, { it.startSection ?: 0 })))
+        for (window in onlineWindows) {
+            val name = window.name?.trim().orEmpty()
+            if (name.isEmpty()) continue
+            val key = mergeKey(name, window.teacher)
+            val course = keyToCourse.getOrPut(key) {
+                MergedCourse(name = name, teacher = window.teacher, sessions = emptyList())
+            }
+            keyToCourse[key] = course.copy(onlineWindows = course.onlineWindows + window)
+        }
+
+        return keyToCourse.values.map { course ->
+            course.copy(
+                sessions = course.sessions.sortedWith(compareBy({ it.dayOfWeek ?: 0 }, { it.startSection ?: 0 })),
+                onlineWindows = course.onlineWindows.sortedBy { it.startDate },
+            )
         }
     }
 

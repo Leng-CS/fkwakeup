@@ -2,6 +2,7 @@ package com.lengcs.fkwakeup.core.importer
 
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 
 /**
  * 端到端：L1 提取 → L2 归一/校验 → 归并
@@ -144,5 +145,70 @@ class TimetableImporterTest {
         assertThat(result.sectionTemplates).isNotNull()
         assertThat(result.sectionTemplates!!.size).isEqualTo(12)
         assertThat(result.sectionTemplates!!.first().index).isEqualTo(1)
+    }
+
+    @Test
+    fun `v1_1 同时导入直播与异步网课`() {
+        val json = """
+            {
+              "format":"campus-timetable","version":"1.1",
+              "term":{"name":"T","startMonday":"2026-09-07","totalWeeks":18},
+              "sessions":[{
+                "name":"大学英语","teacher":"李娜","dayOfWeek":3,
+                "startSection":1,"endSection":2,"weeks":"1-16",
+                "deliveryMode":"liveOnline","onlinePlatform":"腾讯会议",
+                "onlineUrl":"https://example.edu/live"
+              }],
+              "onlineWindows":[{
+                "name":"大学英语","teacher":"李娜","startDate":"2026-09-01",
+                "endDate":"2026-12-31","platform":"学习通","url":"https://example.edu/course"
+              }]
+            }
+        """.trimIndent()
+
+        val result = TimetableImporter.import(json)
+
+        assertThat(result.errors).isEmpty()
+        assertThat(result.sessionCount).isEqualTo(1)
+        assertThat(result.onlineWindowCount).isEqualTo(1)
+        assertThat(result.courses).hasSize(1)
+        val course = result.courses.single()
+        assertThat(course.sessions.single().deliveryMode).isEqualTo(SessionDeliveryMode.LIVE_ONLINE)
+        assertThat(course.sessions.single().onlinePlatform).isEqualTo("腾讯会议")
+        assertThat(course.onlineWindows.single().platform).isEqualTo("学习通")
+    }
+
+    @Test
+    fun `异步网课结束日期早于开始日期会报错`() {
+        val json = """
+            {
+              "format":"campus-timetable","version":"1.1",
+              "term":{"name":"T","startMonday":"2026-09-07","totalWeeks":18},
+              "sessions":[],
+              "onlineWindows":[{"name":"网课","startDate":"2026-10-10","endDate":"2026-09-01"}]
+            }
+        """.trimIndent()
+
+        val result = TimetableImporter.import(json)
+
+        assertThat(result.errors.map { it.code }).contains("E_ONLINE_DATE")
+    }
+
+    @Test
+    fun `只含异步网课的 v1_1 文件也导入成功`() {
+        val json = """
+            {
+              "format":"campus-timetable","version":"1.1",
+              "term":{"name":"T","startMonday":"2026-09-07","totalWeeks":18},
+              "sessions":[],
+              "onlineWindows":[{"name":"网课","startDate":"2026-09-07","endDate":"2026-09-08"}]
+            }
+        """.trimIndent()
+
+        val result = TimetableImporter.import(json)
+
+        assertThat(result.errors).isEmpty()
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.courses.single().onlineWindows).hasSize(1)
     }
 }

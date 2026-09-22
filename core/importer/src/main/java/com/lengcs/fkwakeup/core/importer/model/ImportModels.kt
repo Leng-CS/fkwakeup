@@ -1,6 +1,7 @@
 package com.lengcs.fkwakeup.core.importer.model
 
 import com.lengcs.fkwakeup.core.model.SectionTemplate
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 import java.time.LocalDate
 
 /** 错误码（主开发文档 5.5） */
@@ -14,6 +15,8 @@ object ErrorCodes {
     const val SECTION_OOB = "E_SECTION_OOB"
     const val WEEKSPEC = "E_WEEKSPEC"
     const val TIME = "E_TIME"
+    const val DELIVERY_MODE = "E_DELIVERY_MODE"
+    const val ONLINE_DATE = "E_ONLINE_DATE"
 }
 
 /**
@@ -48,6 +51,20 @@ data class SessionDraft(
     val endSection: Int?,
     val weeks: String?,
     val note: String?,
+    val deliveryMode: SessionDeliveryMode? = SessionDeliveryMode.ONSITE,
+    val onlinePlatform: String? = null,
+    val onlineUrl: String? = null,
+)
+
+data class OnlineWindowDraft(
+    val index: Int,
+    val name: String?,
+    val teacher: String?,
+    val startDate: LocalDate?,
+    val endDate: LocalDate?,
+    val platform: String?,
+    val url: String?,
+    val note: String?,
 )
 
 /** 归一化后的完整导入草稿 */
@@ -56,6 +73,7 @@ data class ImportDraft(
     val sectionTemplates: List<SectionTemplate>?,
     val sessions: List<SessionDraft>,
     val errors: List<ImportError>,
+    val onlineWindows: List<OnlineWindowDraft> = emptyList(),
 )
 
 /**
@@ -69,6 +87,7 @@ data class MergedCourse(
     val teacher: String?,
     val colorArgb: Int? = null,
     val sessions: List<SessionDraft>,
+    val onlineWindows: List<OnlineWindowDraft> = emptyList(),
 )
 
 /** 导入结果 */
@@ -78,8 +97,9 @@ data class ImportResult(
     val courses: List<MergedCourse>,
     val errors: List<ImportError>,
     val sessionCount: Int,
+    val onlineWindowCount: Int = 0,
 ) {
     /** 无文件级错误且至少识别出一条记录 */
     val isSuccess: Boolean
-        get() = errors.none { it.recordIndex == null } && sessionCount > 0
+        get() = errors.none { it.recordIndex == null } && sessionCount + onlineWindowCount > 0
 }

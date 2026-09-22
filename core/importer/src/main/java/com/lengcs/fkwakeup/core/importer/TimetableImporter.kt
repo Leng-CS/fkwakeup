@@ -38,7 +38,7 @@ object TimetableImporter {
         val errors = TimetableValidator.validate(draft)
 
         // ---- 归并 ----
-        val courses = CourseMerger.merge(draft.sessions)
+        val courses = CourseMerger.merge(draft.sessions, draft.onlineWindows)
 
         return ImportResult(
             term = draft.term,
@@ -46,6 +46,7 @@ object TimetableImporter {
             courses = courses,
             errors = errors,
             sessionCount = draft.sessions.size,
+            onlineWindowCount = draft.onlineWindows.size,
         )
     }
 

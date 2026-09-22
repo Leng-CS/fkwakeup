@@ -5,9 +5,11 @@ import com.lengcs.fkwakeup.core.importer.model.ErrorCodes
 import com.lengcs.fkwakeup.core.importer.model.ImportDraft
 import com.lengcs.fkwakeup.core.importer.model.ImportError
 import com.lengcs.fkwakeup.core.importer.model.SessionDraft
+import com.lengcs.fkwakeup.core.importer.model.OnlineWindowDraft
 import com.lengcs.fkwakeup.core.importer.model.TermDraft
 import com.lengcs.fkwakeup.core.model.DefaultSections
 import com.lengcs.fkwakeup.core.model.SectionTemplate
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -54,10 +56,10 @@ object TimetableNormalizer {
             )
         }
         val version = root.stringOrNull("version")
-        if (version != "1.0") {
+        if (version !in setOf("1.0", "1.1")) {
             errors += ImportError(
                 ErrorCodes.VERSION,
-                "version 应为 1.0，实际为 ${version ?: "缺失"}",
+                "version 应为 1.0 或 1.1，实际为 ${version ?: "缺失"}",
             )
         }
 
@@ -70,12 +72,14 @@ object TimetableNormalizer {
         // ---- 时间段列表 ----
         val totalWeeks = term?.totalWeeks ?: 18
         val sessions = normalizeSessions(root["sessions"], totalWeeks, errors)
+        val onlineWindows = normalizeOnlineWindows(root["onlineWindows"], errors)
 
         return ImportDraft(
             term = term,
             sectionTemplates = sectionTemplates,
             sessions = sessions,
             errors = errors,
+            onlineWindows = onlineWindows,
         )
     }
 
@@ -188,6 +192,16 @@ object TimetableNormalizer {
                 ?: "1-$totalWeeks"
 
             val note = obj.stringOrNull("note")?.trim()?.takeIf { it.isNotBlank() }
+            val onlinePlatform = FieldNormalizer.normalizeOptionalText(
+                obj.stringOrNull("onlinePlatform") ?: obj.stringOrNull("platform"),
+            )
+            val onlineUrl = FieldNormalizer.normalizeOptionalText(
+                obj.stringOrNull("onlineUrl") ?: obj.stringOrNull("url") ?: obj.stringOrNull("link"),
+            )
+            val deliveryMode = normalizeDeliveryMode(
+                obj.stringOrNull("deliveryMode") ?: obj.stringOrNull("mode") ?: obj.stringOrNull("授课方式"),
+                hasOnlineDetails = onlinePlatform != null || onlineUrl != null,
+            )
 
             SessionDraft(
                 index = i + 1,
@@ -199,7 +213,57 @@ object TimetableNormalizer {
                 endSection = range?.second,
                 weeks = weeks,
                 note = note,
+                deliveryMode = deliveryMode,
+                onlinePlatform = onlinePlatform,
+                onlineUrl = onlineUrl,
             )
+        }
+    }
+
+    private fun normalizeOnlineWindows(
+        element: JsonElement?,
+        errors: MutableList<ImportError>,
+    ): List<OnlineWindowDraft> {
+        val array = element as? kotlinx.serialization.json.JsonArray ?: return emptyList()
+        return array.mapIndexed { i, item ->
+            val obj = item as? JsonObject
+            if (obj == null) {
+                errors += ImportError(ErrorCodes.FORMAT, "第 ${i + 1} 条网课记录不是对象", i + 1)
+                return@mapIndexed OnlineWindowDraft(i + 1, null, null, null, null, null, null, null)
+            }
+            val map = obj.toStringMap()
+            OnlineWindowDraft(
+                index = i + 1,
+                name = FieldNormalizer.nameKey(map)?.trim()?.takeIf { it.isNotBlank() },
+                teacher = FieldNormalizer.normalizeOptionalText(FieldNormalizer.teacherKey(map)),
+                startDate = parseDate(obj.stringOrNull("startDate") ?: obj.stringOrNull("start")),
+                endDate = parseDate(obj.stringOrNull("endDate") ?: obj.stringOrNull("end")),
+                platform = FieldNormalizer.normalizeOptionalText(obj.stringOrNull("platform")),
+                url = FieldNormalizer.normalizeOptionalText(
+                    obj.stringOrNull("url") ?: obj.stringOrNull("link") ?: obj.stringOrNull("courseUrl"),
+                ),
+                note = FieldNormalizer.normalizeOptionalText(obj.stringOrNull("note")),
+            )
+        }
+    }
+
+    private fun parseDate(raw: String?): LocalDate? = raw?.trim()?.let { value ->
+        try {
+            LocalDate.parse(value)
+        } catch (_: DateTimeParseException) {
+            null
+        }
+    }
+
+    private fun normalizeDeliveryMode(raw: String?, hasOnlineDetails: Boolean): SessionDeliveryMode? {
+        val value = raw?.trim()?.lowercase()
+        if (value.isNullOrEmpty()) {
+            return if (hasOnlineDetails) SessionDeliveryMode.LIVE_ONLINE else SessionDeliveryMode.ONSITE
+        }
+        return when (value.replace("_", "").replace("-", "")) {
+            "onsite", "offline", "线下" -> SessionDeliveryMode.ONSITE
+            "liveonline", "online", "live", "直播", "直播网课" -> SessionDeliveryMode.LIVE_ONLINE
+            else -> null
         }
     }
 
