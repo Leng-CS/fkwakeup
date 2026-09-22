@@ -43,8 +43,9 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 - 每个桌面实例按 `AppWidgetId` 单独持久化范围、左栏、背景、透明度、文字透明度、深色预设与相册 URI；App 内「课程管理 → 小组件」自动列出实例为「课表小组件 1 / 2 …」。
 - 课程列表支持内部纵向滚动；每个时间段独立两行显示，`今日＋明天 / 本周` 有日期分组，范围为空时展示下一次课程。
 - 左栏支持课程颜色、节次、两者；背景支持透明、纯色、双色渐变、三种内置预设及相册图片。闹钟按钮只进入 M8 占位页。
+- 合并前审查修正 commit `bfb6284`：图片与渐变背景改用 Glance 公开的 `ImageProvider(Bitmap)` 接口，消除 3 个 `RestrictedApi` Lint 错误。
 - 点课程、列表空白区或下一次课程会打开对应日期的周视图；课程开始/结束的单次刷新与 15 分钟兜底、广播刷新均保留。
-- 验证：`gradlew testDebugUnitTest`、`gradlew :app:assembleDebug` 全绿；Debug APK 已安装到 `Pixel_8_API_35` 并成功启动。
+- 验证：`gradlew :widget:glance:lintDebug testDebugUnitTest :app:assembleDebug` 全绿；Debug APK 已安装到 `Pixel_8_API_35` 并成功启动。
 ### #10 [微调] 周视图顶栏紧凑化，课程块完整展示时间/课名/地点
 
 - 分支：`chore/schedule-ui-polish`，commit `126d035` → 已合入 main（`918d018`）
