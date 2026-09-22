@@ -17,6 +17,13 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ## M9 · MVP 后打磨与问题修复
 
+### #36 [需求] 建立自动化 APK 发布流程
+
+- Issue：[#36](https://github.com/Leng-CS/fkwakeup/issues/36)；分支：`feat/automated-apk-release`；实现 commits `fb44305`、`1bb4845`
+- 新增标签触发的 GitHub Actions 工作流：先运行全量单元测试并构建 Debug APK，再使用仓库内置的最小 `contents: write` 权限创建预发布版本。
+- APK 与 SHA-256 校验文件会一并上传；对应版本的发布说明保存在 `docs/releases/`，不存在时自动使用 GitHub 生成说明。
+- 验证：工作流配置已通过 `git diff --check`；最终以 `v0.2.0-demo` 标签的实际 Actions 运行和 Release 资产为准。
+
 ### #34 [需求] 统一轻松柔和的卡通视觉风格
 
 - Issue：[#34](https://github.com/Leng-CS/fkwakeup/issues/34)；分支：`feat/soft-cartoon-ui`；实现 commit `73a498c`
