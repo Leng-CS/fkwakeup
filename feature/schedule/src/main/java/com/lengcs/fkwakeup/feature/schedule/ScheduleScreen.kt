@@ -22,13 +22,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -218,33 +219,41 @@ private fun ScheduleTopBar(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // 导入与管理保持在独立操作行，周次切换不再和文字互相挤压。
+                // 两个同级入口共用胶囊样式，形成清楚的操作组。
                 onImport?.let { importClick ->
-                    TextButton(
+                    HeaderActionButton(
+                        text = stringResource(R.string.schedule_import),
                         onClick = importClick,
-                        modifier = Modifier.height(32.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.schedule_import),
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                }
-
-                TextButton(
-                    onClick = onManage,
-                    modifier = Modifier.height(32.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.schedule_manage),
-                        style = MaterialTheme.typography.labelMedium,
                     )
                 }
+
+                HeaderActionButton(
+                    text = stringResource(R.string.schedule_manage),
+                    onClick = onManage,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun HeaderActionButton(
+    text: String,
+    onClick: () -> Unit,
+) {
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = Modifier.height(34.dp),
+        shape = CircleShape,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+            contentColor = MaterialTheme.colorScheme.primary,
+        ),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        Text(text = text, style = MaterialTheme.typography.labelMedium)
     }
 }
 
