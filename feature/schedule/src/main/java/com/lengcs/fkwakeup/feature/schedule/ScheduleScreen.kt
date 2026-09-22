@@ -56,6 +56,7 @@ import com.lengcs.fkwakeup.core.common.MutedBlockColor
 import com.lengcs.fkwakeup.core.common.ScheduleBlock
 import com.lengcs.fkwakeup.core.designsystem.theme.FkwakeupTheme
 import com.lengcs.fkwakeup.core.model.SectionTemplate
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 
 private val SECTION_COLUMN_WIDTH = 44.dp
 /** 一格要放下「开始时间 + 课程名 + 地点」三行，56dp 太挤，放宽到 64dp */
@@ -66,6 +67,8 @@ private val WEEKDAYS = listOf("周一", "周二", "周三", "周四", "周五", 
 fun ScheduleScreen(
     onImportClick: () -> Unit,
     onManageClick: () -> Unit,
+    onOnlineCourseClick: (Long) -> Unit,
+    onOnlineAlarmClick: () -> Unit,
     targetDate: java.time.LocalDate? = null,
     modifier: Modifier = Modifier,
     viewModel: ScheduleViewModel = hiltViewModel(),
@@ -104,6 +107,14 @@ fun ScheduleScreen(
         if (state.term == null || state.isEmpty) {
             EmptySchedule(onImportClick = onImportClick)
             return@Column
+        }
+
+        if (state.onlineCourses.isNotEmpty()) {
+            OnlineCourseSection(
+                items = state.onlineCourses,
+                onCourseClick = onOnlineCourseClick,
+                onAlarmClick = onOnlineAlarmClick,
+            )
         }
 
         WeekdayHeader(todayDayOfWeek = state.todayDayOfWeek)
@@ -494,10 +505,15 @@ private fun CourseBlockCard(
                 maxLines = 3,
                 overflow = TextOverflow.Clip,
             )
-            // 3. 上课地点
-            if (block.session.location != null) {
+            // 3. 上课地点或直播平台
+            val place = if (block.session.deliveryMode == SessionDeliveryMode.LIVE_ONLINE) {
+                block.session.onlinePlatform?.let { "直播 · $it" } ?: "直播网课"
+            } else {
+                block.session.location?.let { "@$it" }
+            }
+            if (place != null) {
                 Text(
-                    text = "@${block.session.location}",
+                    text = place,
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontSize = 9.sp,
                         lineHeight = 11.sp,

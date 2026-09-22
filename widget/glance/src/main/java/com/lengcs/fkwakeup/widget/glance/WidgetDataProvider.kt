@@ -11,7 +11,9 @@ import com.lengcs.fkwakeup.core.database.repository.CourseRepository
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.datastore.SettingsRepository
 import com.lengcs.fkwakeup.core.model.CourseWithSessions
+import com.lengcs.fkwakeup.core.model.CourseSession
 import com.lengcs.fkwakeup.core.model.SectionTemplate
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 import kotlinx.coroutines.flow.first
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -35,6 +37,9 @@ data class WidgetLesson(
     val colorArgb: Int,
     val dateHeader: String? = null,
 )
+
+internal fun CourseSession.isVisibleInWidget(): Boolean =
+    deliveryMode == SessionDeliveryMode.ONSITE
 
 data class WidgetData(
     val termName: String,
@@ -107,6 +112,7 @@ class WidgetDataProvider(
         val result = mutableListOf<WidgetLesson>()
         for (course in courses) {
             for (session in course.sessions) {
+                if (!session.isVisibleInWidget()) continue
                 if (session.dayOfWeek != date.dayOfWeek.value) continue
                 if (
                     ScheduleLayout.build(

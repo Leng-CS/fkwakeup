@@ -40,7 +40,7 @@
 
     <!-- 预览页 -->
     <string name="preview_title">确认识别结果</string>
-    <string name="preview_summary">共 %1$d 个时间段 → 归并为 %2$d 门课程</string>
+    <string name="preview_summary">共 %1$d 个固定时间段、%2$d 个网课开放期 → 归并为 %3$d 门课程</string>
     <string name="preview_tap_hint">点任意一条时间段即可修改周几、节次、周次、地点等</string>
     <string name="preview_term_card">学期信息</string>
     <string name="preview_term_name">学期名称</string>
@@ -53,6 +53,8 @@
     <string name="preview_session_item">周%1$s 第%2$d-%3$d节 · %4$s周 · %5$s</string>
     <string name="preview_location_unknown">地点未识别</string>
     <string name="preview_edit_session">点此编辑</string>
+    <string name="preview_live_online">直播网课</string>
+    <string name="preview_online_window">异步网课 · %1$s 至 %2$s</string>
     <string name="preview_edit_title">编辑时间段</string>
     <string name="preview_name_required">课程名称不能为空</string>
     <string name="preview_weeks_required">请至少选择一周</string>

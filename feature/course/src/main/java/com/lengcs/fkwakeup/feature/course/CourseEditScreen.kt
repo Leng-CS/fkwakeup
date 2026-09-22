@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -40,12 +41,15 @@ import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.designsystem.R as DsR
 import com.lengcs.fkwakeup.core.common.WeekSpecFormatter
 import com.lengcs.fkwakeup.core.common.WeekSpecParser
+import com.lengcs.fkwakeup.core.common.OnlineCourseTimeline
 import com.lengcs.fkwakeup.core.designsystem.picker.LabeledWheel
 import com.lengcs.fkwakeup.core.designsystem.picker.WeekPicker
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
 import com.lengcs.fkwakeup.core.database.repository.CurrentTermProvider
 import com.lengcs.fkwakeup.core.model.Course
 import com.lengcs.fkwakeup.core.model.CourseSession
+import com.lengcs.fkwakeup.core.model.OnlineCourseWindow
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 import com.lengcs.fkwakeup.core.model.SectionTemplate
 import com.lengcs.fkwakeup.core.model.Term
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -57,6 +61,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.time.LocalDate
 
 /**
  * 可编辑的时间段。
@@ -70,6 +75,9 @@ data class EditableSession(
     val weeks: Set<Int> = emptySet(),
     val location: String? = null,
     val note: String? = null,
+    val deliveryMode: SessionDeliveryMode = SessionDeliveryMode.ONSITE,
+    val onlinePlatform: String? = null,
+    val onlineUrl: String? = null,
 )
 
 @HiltViewModel
@@ -105,6 +113,7 @@ class CourseEditViewModel @Inject constructor(
         val teacher: String,
         val note: String,
         val sessions: List<EditableSession>,
+        val onlineWindows: List<EditableOnlineWindow>,
     )
 
     init {
@@ -120,11 +129,11 @@ class CourseEditViewModel @Inject constructor(
             // 节次表用于滚轮的取值范围（1..节次数）
             _sections.value = term?.let { termRepository.getSections(it.id) } ?: emptyList()
             if (courseId == 0L) {
-                _initial.value = CourseEditInitial("", "", "", emptyList())
+                _initial.value = CourseEditInitial("", "", "", emptyList(), emptyList())
             } else {
                 val entry = courseRepository.getCourseWithSessions(courseId)
                 if (entry == null) {
-                    _initial.value = CourseEditInitial("", "", "", emptyList())
+                    _initial.value = CourseEditInitial("", "", "", emptyList(), emptyList())
                 } else {
                     _initial.value = CourseEditInitial(
                         name = entry.course.name,
@@ -139,8 +148,12 @@ class CourseEditViewModel @Inject constructor(
                                     ?: emptySet(),
                                 location = it.location,
                                 note = it.note,
+                                deliveryMode = it.deliveryMode,
+                                onlinePlatform = it.onlinePlatform,
+                                onlineUrl = it.onlineUrl,
                             )
                         },
+                        onlineWindows = entry.onlineWindows.map { EditableOnlineWindow.fromDomain(it) },
                     )
                 }
             }
@@ -153,18 +166,33 @@ class CourseEditViewModel @Inject constructor(
         teacher: String,
         note: String,
         sessions: List<EditableSession>,
+        onlineWindows: List<EditableOnlineWindow>,
         onDone: () -> Unit,
     ) {
         viewModelScope.launch {
             // 没有当前学期时**不能静默 return** —— 用户点了保存却什么都不发生，
             // 会以为已经保存成功（这条路径以前就是静默失败）
-            val termId = _term.value?.id
+            val term = _term.value
+            val termId = term?.id
             if (termId == null) {
                 _messages.trySend("还没有学期，请先在「学期管理」里新建一个")
                 return@launch
             }
             if (name.isBlank()) {
                 _messages.trySend("课程名称不能为空")
+                return@launch
+            }
+
+            val invalidDates = onlineWindows.firstOrNull { it.endDate.isBefore(it.startDate) }
+            if (invalidDates != null) {
+                _messages.trySend("网课结束日期不能早于开始日期")
+                return@launch
+            }
+            val outsideTerm = onlineWindows.firstOrNull {
+                !OnlineCourseTimeline.overlapsTerm(it.toDomain(courseId.coerceAtLeast(0L)), term)
+            }
+            if (outsideTerm != null) {
+                _messages.trySend("网课开放期必须与当前学期至少重叠一天")
                 return@launch
             }
 
@@ -201,8 +229,15 @@ class CourseEditViewModel @Inject constructor(
                         weekSpec = WeekSpecFormatter.format(it.weeks, totalWeeks),
                         location = it.location,
                         note = it.note,
+                        deliveryMode = it.deliveryMode,
+                        onlinePlatform = if (it.deliveryMode == SessionDeliveryMode.LIVE_ONLINE) it.onlinePlatform else null,
+                        onlineUrl = if (it.deliveryMode == SessionDeliveryMode.LIVE_ONLINE) it.onlineUrl else null,
                     )
                 },
+            )
+            courseRepository.replaceOnlineWindows(
+                targetId,
+                onlineWindows.map { it.toDomain(targetId) },
             )
             // 写库后主动刷新小组件，否则要等 15 分钟兜底
             com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler.refreshNow(appContext)
@@ -256,6 +291,9 @@ fun CourseEditScreen(
     var teacher by remember { mutableStateOf(TextFieldValue(start.teacher)) }
     var note by remember { mutableStateOf(TextFieldValue(start.note)) }
     val sessions = remember { mutableStateListOf<EditableSession>().apply { addAll(start.sessions) } }
+    val onlineWindows = remember {
+        mutableStateListOf<EditableOnlineWindow>().apply { addAll(start.onlineWindows) }
+    }
 
     val totalWeeks by viewModel.term.collectAsState()
     val sections by viewModel.sections.collectAsState()
@@ -334,9 +372,44 @@ fun CourseEditScreen(
                 Text(stringResource(R.string.edit_add_session))
             }
 
+            Text(stringResource(R.string.edit_online_windows), style = MaterialTheme.typography.titleSmall)
+            if (onlineWindows.isEmpty()) {
+                Text(stringResource(R.string.edit_no_online_window), style = MaterialTheme.typography.bodySmall)
+            }
+            onlineWindows.forEachIndexed { index, window ->
+                OnlineWindowEditor(
+                    index = index,
+                    window = window,
+                    term = totalWeeks,
+                    onChange = { onlineWindows[index] = it },
+                    onRemove = { onlineWindows.removeAt(index) },
+                )
+            }
+            OutlinedButton(
+                onClick = {
+                    val term = totalWeeks ?: return@OutlinedButton
+                    onlineWindows.add(
+                        EditableOnlineWindow(
+                            startDate = term.startMonday,
+                            endDate = OnlineCourseTimeline.termEnd(term),
+                        ),
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.edit_add_online_window))
+            }
+
             Button(
                 onClick = {
-                    viewModel.save(name.text, teacher.text, note.text, sessions.toList(), onBack)
+                    viewModel.save(
+                        name.text,
+                        teacher.text,
+                        note.text,
+                        sessions.toList(),
+                        onlineWindows.toList(),
+                        onBack,
+                    )
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -374,6 +447,26 @@ private fun SessionEditor(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = session.deliveryMode == SessionDeliveryMode.ONSITE,
+                    onClick = {
+                        onChange(
+                            session.copy(
+                                deliveryMode = SessionDeliveryMode.ONSITE,
+                                onlinePlatform = null,
+                                onlineUrl = null,
+                            ),
+                        )
+                    },
+                    label = { Text(stringResource(R.string.edit_mode_onsite)) },
+                )
+                FilterChip(
+                    selected = session.deliveryMode == SessionDeliveryMode.LIVE_ONLINE,
+                    onClick = { onChange(session.copy(deliveryMode = SessionDeliveryMode.LIVE_ONLINE)) },
+                    label = { Text(stringResource(R.string.edit_mode_live)) },
+                )
+            }
             // 与周视图编辑抽屉保持一致：滚轮选周几 / 起止节次
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -423,13 +516,30 @@ private fun SessionEditor(
                 },
                 onClear = { onChange(session.copy(weeks = emptySet())) },
             )
-            OutlinedTextField(
-                value = session.location.orEmpty(),
-                onValueChange = { onChange(session.copy(location = it.ifBlank { null })) },
-                label = { Text(stringResource(R.string.edit_location)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (session.deliveryMode == SessionDeliveryMode.LIVE_ONLINE) {
+                OutlinedTextField(
+                    value = session.onlinePlatform.orEmpty(),
+                    onValueChange = { onChange(session.copy(onlinePlatform = it.ifBlank { null })) },
+                    label = { Text(stringResource(R.string.edit_online_platform)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = session.onlineUrl.orEmpty(),
+                    onValueChange = { onChange(session.copy(onlineUrl = it.ifBlank { null })) },
+                    label = { Text(stringResource(R.string.edit_online_url)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                OutlinedTextField(
+                    value = session.location.orEmpty(),
+                    onValueChange = { onChange(session.copy(location = it.ifBlank { null })) },
+                    label = { Text(stringResource(R.string.edit_location)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "时间段 ${index + 1}",

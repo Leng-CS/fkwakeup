@@ -335,7 +335,15 @@ private fun CourseRow(
                     Text(it, style = MaterialTheme.typography.bodySmall)
                 }
                 Text(
-                    text = stringResource(R.string.course_session_count, entry.sessions.size),
+                    text = if (entry.onlineWindows.isEmpty()) {
+                        stringResource(R.string.course_session_count, entry.sessions.size)
+                    } else {
+                        stringResource(
+                            R.string.course_schedule_count,
+                            entry.sessions.size,
+                            entry.onlineWindows.size,
+                        )
+                    },
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.common.BlockPhase
 import com.lengcs.fkwakeup.core.common.BlockPhaseCalculator
 import com.lengcs.fkwakeup.core.common.CurrentWeekCalculator
+import com.lengcs.fkwakeup.core.common.OnlineCourseItem
+import com.lengcs.fkwakeup.core.common.OnlineCourseTimeline
 import com.lengcs.fkwakeup.core.common.ScheduleBlock
 import com.lengcs.fkwakeup.core.common.ScheduleLayout
 import com.lengcs.fkwakeup.core.common.WeekSpecFormatter
@@ -50,6 +52,7 @@ data class ScheduleUiState(
      * 周视图据此把已上完的课块涂灰、给正在上的那节加边框。
      */
     val blockPhases: Map<Long, BlockPhase> = emptyMap(),
+    val onlineCourses: List<OnlineCourseItem> = emptyList(),
     val isEmpty: Boolean = true,
 )
 
@@ -128,6 +131,7 @@ class ScheduleViewModel @Inject constructor(
                 now = nowDateTime,
             )
         }
+        val onlineCourses = OnlineCourseTimeline.items(courses, today)
 
         return ScheduleUiState(
             term = term,
@@ -138,7 +142,8 @@ class ScheduleViewModel @Inject constructor(
             todayDayOfWeek = if (isThisWeek) today.dayOfWeek.value else null,
             currentSection = currentSection,
             blockPhases = blockPhases,
-            isEmpty = courses.isEmpty(),
+            onlineCourses = onlineCourses,
+            isEmpty = blocks.isEmpty() && onlineCourses.isEmpty(),
         )
     }
 

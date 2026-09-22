@@ -35,7 +35,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lengcs.fkwakeup.core.common.CourseColorPalette
 import com.lengcs.fkwakeup.core.importer.model.MergedCourse
+import com.lengcs.fkwakeup.core.importer.model.OnlineWindowDraft
 import com.lengcs.fkwakeup.core.importer.model.SessionDraft
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 
 private val WEEK_NAMES = listOf("一", "二", "三", "四", "五", "六", "日")
 
@@ -69,6 +71,7 @@ fun ImportPreviewScreen(
             text = stringResource(
                 R.string.preview_summary,
                 viewModel.sessionCount,
+                viewModel.onlineWindowCount,
                 viewModel.courses.size,
             ),
             style = MaterialTheme.typography.bodyMedium,
@@ -219,7 +222,7 @@ private fun CourseCard(
                 )
             }
 
-            if (course.sessions.isEmpty()) {
+            if (course.sessions.isEmpty() && course.onlineWindows.isEmpty()) {
                 Text(
                     stringResource(R.string.preview_no_session),
                     style = MaterialTheme.typography.bodySmall,
@@ -236,6 +239,8 @@ private fun CourseCard(
                     HorizontalDivider()
                 }
             }
+
+            course.onlineWindows.forEach { window -> OnlineWindowRow(window) }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onDelete) {
@@ -259,6 +264,9 @@ private fun SessionRow(
     ) {
         Text(
             text = buildString {
+                if (session.deliveryMode == SessionDeliveryMode.LIVE_ONLINE) {
+                    append(stringResource(R.string.preview_live_online)).append(" · ")
+                }
                 append("周").append(session.dayLabel())
                 append(" 第")
                     .append(session.startSection ?: 0)
@@ -267,6 +275,7 @@ private fun SessionRow(
                     .append("节")
                 append(" · ").append(session.weeks.orEmpty()).append("周")
                 append(" · ").append(session.location ?: stringResource(R.string.preview_location_unknown))
+                session.onlinePlatform?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
                 session.note?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
             },
             style = MaterialTheme.typography.bodySmall,
@@ -276,6 +285,30 @@ private fun SessionRow(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
         )
+    }
+}
+
+@Composable
+private fun OnlineWindowRow(window: OnlineWindowDraft) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+        Text(
+            text = stringResource(
+                R.string.preview_online_window,
+                window.startDate?.toString().orEmpty(),
+                window.endDate?.toString().orEmpty(),
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        listOfNotNull(window.platform, window.url, window.note)
+            .filter { it.isNotBlank() }
+            .takeIf { it.isNotEmpty() }
+            ?.let {
+                Text(
+                    text = it.joinToString(" · "),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
     }
 }
 

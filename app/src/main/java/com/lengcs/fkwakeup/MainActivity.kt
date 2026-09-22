@@ -100,6 +100,8 @@ private fun FkwakeupApp(sharedText: String?, widgetLink: Uri?) {
                 ScheduleScreen(
                     onImportClick = { navController.navigate(Routes.IMPORT) },
                     onManageClick = { navController.navigate(Routes.MANAGE) },
+                    onOnlineCourseClick = { navController.navigate(Routes.courseEdit(it)) },
+                    onOnlineAlarmClick = { navController.navigate(Routes.ALARM_PLACEHOLDER) },
                     targetDate = targetDate,
                     modifier = Modifier.padding(padding),
                 )

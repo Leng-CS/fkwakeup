@@ -18,6 +18,7 @@ import com.lengcs.fkwakeup.core.importer.model.MergedCourse
 import com.lengcs.fkwakeup.core.model.Course
 import com.lengcs.fkwakeup.core.model.CourseSession
 import com.lengcs.fkwakeup.core.model.DefaultSections
+import com.lengcs.fkwakeup.core.model.OnlineCourseWindow
 import com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -60,6 +61,9 @@ class ImportViewModel @Inject constructor(
         private set
 
     var sessionCount: Int by mutableStateOf(0)
+        private set
+
+    var onlineWindowCount: Int by mutableStateOf(0)
         private set
 
     var isImporting: Boolean by mutableStateOf(false)
@@ -107,6 +111,7 @@ class ImportViewModel @Inject constructor(
     fun parse() {
         val result: ImportResult = TimetableImporter.import(inputText)
         sessionCount = result.sessionCount
+        onlineWindowCount = result.onlineWindowCount
 
         if (result.errors.isEmpty()) {
             errors = emptyList()
@@ -131,6 +136,7 @@ class ImportViewModel @Inject constructor(
         courses = emptyList()
         errors = emptyList()
         sessionCount = 0
+        onlineWindowCount = 0
         isImporting = false
     }
 
@@ -178,8 +184,12 @@ class ImportViewModel @Inject constructor(
         val from = courses.getOrNull(fromIndex) ?: return
         val to = courses.getOrNull(toIndex) ?: return
 
-        val merged = to.copy(sessions = (to.sessions + from.sessions)
-            .sortedWith(compareBy({ it.dayOfWeek ?: 0 }, { it.startSection ?: 0 })))
+        val merged = to.copy(
+            sessions = (to.sessions + from.sessions)
+                .sortedWith(compareBy({ it.dayOfWeek ?: 0 }, { it.startSection ?: 0 })),
+            onlineWindows = (to.onlineWindows + from.onlineWindows)
+                .sortedBy { it.startDate },
+        )
 
         val updated = courses.toMutableList()
         updated[toIndex] = merged
@@ -278,6 +288,23 @@ class ImportViewModel @Inject constructor(
                             // 这条时间段静默跳过，整门课永久不显示且没有报错。
                             weekSpec = WeekSpecFallback.orFullTerm(draft.weeks, totalWeeks),
                             location = draft.location,
+                            note = draft.note,
+                            deliveryMode = draft.deliveryMode ?: com.lengcs.fkwakeup.core.model.SessionDeliveryMode.ONSITE,
+                            onlinePlatform = draft.onlinePlatform,
+                            onlineUrl = draft.onlineUrl,
+                        ),
+                    )
+                }
+                course.onlineWindows.forEach { draft ->
+                    val windowStart = draft.startDate ?: return@forEach
+                    val windowEnd = draft.endDate ?: return@forEach
+                    courseRepository.addOnlineWindow(
+                        OnlineCourseWindow(
+                            courseId = courseId,
+                            startDate = windowStart,
+                            endDate = windowEnd,
+                            platform = draft.platform,
+                            url = draft.url,
                             note = draft.note,
                         ),
                     )

@@ -28,4 +28,11 @@
     <string name="schedule_empty_title">还没有课表</string>
     <string name="schedule_empty_action">导入课表</string>
     <string name="schedule_no_term">还没有学期，先导入一份课表</string>
+    <string name="online_section_title">网课</string>
+    <string name="online_ended_title">已结束（%1$d）</string>
+    <string name="online_phase_active">进行中</string>
+    <string name="online_phase_upcoming">未开始</string>
+    <string name="online_phase_ended">已结束</string>
+    <string name="online_date_range">%1$s 至 %2$s</string>
+    <string name="online_alarm_cd">课程提醒</string>
 </resources>

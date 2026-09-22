@@ -5,14 +5,14 @@
 1. 只输出一个 JSON 对象，**不要输出任何解释、前言、后语、总结**。用户会把你的回复整段复制粘贴进一个 App，任何多余文字都会导致导入失败。
 2. JSON 必须放在 ```json 和 ``` 之间。
 3. 不要编造信息。看不清或不确定的字段填 null，并在 note 字段里说明原因。
-4. 每一行代表**一个上课时间段**。同一门课如果在多个时间段上课，就写成多行（不要合并、不要嵌套）。
+4. 固定时间上课的课程每一行代表**一个上课时间段**；只有开放、截止日期的异步网课写入 onlineWindows。
 5. 请原样保留课程名称，不要缩写、不要翻译、不要加空格。
 
 ## JSON 结构
 
 {
   "format": "campus-timetable",
-  "version": "1.0",
+  "version": "1.1",
   "term": {
     "name": "学期名称，例如：2026-2027 秋季学期",
     "startMonday": "学期第一周的周一，格式 YYYY-MM-DD；图中没有就从当前日期合理推断",
@@ -27,6 +27,20 @@
       "startSection": 1,
       "endSection": 2,
       "weeks": "1-16",
+      "note": null,
+      "deliveryMode": "ONSITE",
+      "onlinePlatform": null,
+      "onlineUrl": null
+    }
+  ],
+  "onlineWindows": [
+    {
+      "name": "异步网课名称",
+      "teacher": "任课教师，没有就填 null",
+      "startDate": "2026-09-01",
+      "endDate": "2027-01-10",
+      "platform": "学习平台，没有就填 null",
+      "url": "课程链接，没有就填 null",
       "note": null
     }
   ]
@@ -44,6 +58,9 @@
   - 全程上课但不知道周数：用 `1-18`（与 totalWeeks 保持一致）
 - teacher / location：不知道就填 null，不要填"未知""待定""无"这类文字。
 - note：只在有需要说明的情况填写，否则填 null。
+- deliveryMode：线下课填 `ONSITE`，按固定星期和节次直播的网课填 `LIVE_ONLINE`。
+- LIVE_ONLINE 的 onlinePlatform / onlineUrl 可填写平台和链接；链接看不清时填 null。
+- onlineWindows：只用于没有固定星期、周次和节次，仅有开放日期与结束日期的异步网课；日期格式为 YYYY-MM-DD，且 endDate 不得早于 startDate。
 
 ## 常见情况处理
 
@@ -52,16 +69,19 @@
 - 课程分单双周在不同教室 → 写多行，周次分别写 `1-16单` 和 `1-16双`。
 - 课表里有"实践周""军训""考试周"等非课程条目 → 照常作为一条 session 输出，name 原样保留。
 - 图片里的课程跨了多节 → startSection 写最小节次，endSection 写最大节次。
+- 直播网课有固定星期、节次和周次 → 仍写入 sessions，deliveryMode 填 `LIVE_ONLINE`。
+- 网课只有开放、截止日期 → 写入 onlineWindows，不要虚构星期、节次或周次。
 
 ## 输出前自检（逐条确认）
 
 1. 我是否只输出了 JSON，没有任何多余文字？
-2. format 是否恰好是 "campus-timetable"？version 是否恰好是 "1.0"？
+2. format 是否恰好是 "campus-timetable"？version 是否恰好是 "1.1"？
 3. 每个 session 的 dayOfWeek 是否都在 1-7 之间？
 4. 每个 session 的 endSection 是否都大于或等于 startSection？
 5. 每个 session 的 weeks 是否只使用了数字、短横线、逗号、"单"、"双"这几种字符？
 6. 我不确定的字段是否都填了 null 而不是编造内容？
 7. 同一门课的多个时间段是否写成了多行而不是嵌套结构？
 8. JSON 是否合法（没有尾随逗号、所有字符串用双引号）？
+9. onlineWindows 的日期是否合法，结束日期是否不早于开放日期？
 
 现在开始，这是课表截图：

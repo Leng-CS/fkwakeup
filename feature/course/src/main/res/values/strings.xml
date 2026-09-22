@@ -5,6 +5,7 @@
     <string name="course_add">新增课程</string>
     <string name="course_empty">还没有课程，点上面新增</string>
     <string name="course_session_count">%1$d 个时间段</string>
+    <string name="course_schedule_count">%1$d 个固定时间段 · %2$d 个网课开放期</string>
     <string name="course_delete_done">已删除「%1$s」</string>
     <string name="course_overview">共 %1$d 门课程 · 点击课程即可编辑</string>
     <string name="course_tools">课表工具</string>
@@ -26,6 +27,17 @@
     <string name="edit_delete">删除课程</string>
     <string name="edit_name_required">课程名称不能为空</string>
     <string name="edit_saved">已保存</string>
+    <string name="edit_mode_onsite">线下</string>
+    <string name="edit_mode_live">直播网课</string>
+    <string name="edit_online_windows">异步网课开放期</string>
+    <string name="edit_no_online_window">还没有异步网课开放期</string>
+    <string name="edit_add_online_window">+ 添加网课开放期</string>
+    <string name="edit_online_item">开放期 %1$d</string>
+    <string name="edit_online_start">开放</string>
+    <string name="edit_online_end">结束</string>
+    <string name="edit_online_platform">学习平台</string>
+    <string name="edit_online_url">课程链接</string>
+    <string name="edit_online_open">打开课程链接</string>
 
     <!-- 学期管理 -->
     <string name="term_manage_title">学期管理</string>
