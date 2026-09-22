@@ -27,4 +27,7 @@ data class CourseSessionEntity(
     @ColumnInfo(name = "week_spec") val weekSpec: String,
     val location: String?,
     val note: String?,
+    @ColumnInfo(name = "delivery_mode") val deliveryMode: String,
+    @ColumnInfo(name = "online_platform") val onlinePlatform: String?,
+    @ColumnInfo(name = "online_url") val onlineUrl: String?,
 )

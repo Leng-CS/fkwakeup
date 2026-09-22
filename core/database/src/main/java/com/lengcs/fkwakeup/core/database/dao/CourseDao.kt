@@ -10,12 +10,15 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.lengcs.fkwakeup.core.database.entity.CourseEntity
 import com.lengcs.fkwakeup.core.database.entity.CourseSessionEntity
+import com.lengcs.fkwakeup.core.database.entity.OnlineCourseWindowEntity
 import kotlinx.coroutines.flow.Flow
 
 data class CourseWithSessions(
     @Embedded val course: CourseEntity,
     @Relation(parentColumn = "id", entityColumn = "course_id")
     val sessions: List<CourseSessionEntity>,
+    @Relation(parentColumn = "id", entityColumn = "course_id")
+    val onlineWindows: List<OnlineCourseWindowEntity>,
 )
 
 @Dao

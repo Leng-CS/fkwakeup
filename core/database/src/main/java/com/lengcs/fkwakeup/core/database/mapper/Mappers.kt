@@ -3,13 +3,16 @@ package com.lengcs.fkwakeup.core.database.mapper
 import com.lengcs.fkwakeup.core.database.dao.CourseWithSessions as DbCourseWithSessions
 import com.lengcs.fkwakeup.core.database.entity.CourseEntity
 import com.lengcs.fkwakeup.core.database.entity.CourseSessionEntity
+import com.lengcs.fkwakeup.core.database.entity.OnlineCourseWindowEntity
 import com.lengcs.fkwakeup.core.database.entity.SectionTemplateEntity
 import com.lengcs.fkwakeup.core.database.entity.TermEntity
 import com.lengcs.fkwakeup.core.model.Course
 import com.lengcs.fkwakeup.core.model.CourseSession
 import com.lengcs.fkwakeup.core.model.CourseWithSessions
+import com.lengcs.fkwakeup.core.model.OnlineCourseWindow
 import com.lengcs.fkwakeup.core.model.SectionTemplate
 import com.lengcs.fkwakeup.core.model.Term
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 import java.time.Instant
 import java.time.LocalDate
 
@@ -80,6 +83,10 @@ fun CourseSessionEntity.toDomain(): CourseSession =
         weekSpec = weekSpec,
         location = location,
         note = note,
+        deliveryMode = runCatching { SessionDeliveryMode.valueOf(deliveryMode) }
+            .getOrDefault(SessionDeliveryMode.ONSITE),
+        onlinePlatform = onlinePlatform,
+        onlineUrl = onlineUrl,
     )
 
 fun CourseSession.toEntity(): CourseSessionEntity =
@@ -92,10 +99,36 @@ fun CourseSession.toEntity(): CourseSessionEntity =
         weekSpec = weekSpec,
         location = location,
         note = note,
+        deliveryMode = deliveryMode.name,
+        onlinePlatform = onlinePlatform,
+        onlineUrl = onlineUrl,
+    )
+
+fun OnlineCourseWindowEntity.toDomain(): OnlineCourseWindow =
+    OnlineCourseWindow(
+        id = id,
+        courseId = courseId,
+        startDate = LocalDate.ofEpochDay(startDateEpochDay),
+        endDate = LocalDate.ofEpochDay(endDateEpochDay),
+        platform = platform,
+        url = url,
+        note = note,
+    )
+
+fun OnlineCourseWindow.toEntity(): OnlineCourseWindowEntity =
+    OnlineCourseWindowEntity(
+        id = id,
+        courseId = courseId,
+        startDateEpochDay = startDate.toEpochDay(),
+        endDateEpochDay = endDate.toEpochDay(),
+        platform = platform,
+        url = url,
+        note = note,
     )
 
 fun DbCourseWithSessions.toDomain(): CourseWithSessions =
     CourseWithSessions(
         course = course.toDomain(),
         sessions = sessions.map { it.toDomain() },
+        onlineWindows = onlineWindows.map { it.toDomain() },
     )
