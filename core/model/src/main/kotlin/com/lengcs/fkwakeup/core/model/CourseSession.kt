@@ -15,6 +15,9 @@ data class CourseSession(
     val weekSpec: String,
     val location: String? = null,
     val note: String? = null,
+    val deliveryMode: SessionDeliveryMode = SessionDeliveryMode.ONSITE,
+    val onlinePlatform: String? = null,
+    val onlineUrl: String? = null,
 ) {
     init {
         require(dayOfWeek in 1..7) { "dayOfWeek 应为 1-7，实际为 $dayOfWeek" }
@@ -23,5 +26,10 @@ data class CourseSession(
             "endSection($endSection) 应 >= startSection($startSection)"
         }
         require(weekSpec.isNotBlank()) { "weekSpec 不能为空" }
+        if (deliveryMode == SessionDeliveryMode.ONSITE) {
+            require(onlinePlatform.isNullOrBlank() && onlineUrl.isNullOrBlank()) {
+                "线下时间段不能携带直播平台或链接"
+            }
+        }
     }
 }

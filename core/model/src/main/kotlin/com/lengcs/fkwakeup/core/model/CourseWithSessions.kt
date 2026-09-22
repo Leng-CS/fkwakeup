@@ -9,4 +9,5 @@ package com.lengcs.fkwakeup.core.model
 data class CourseWithSessions(
     val course: Course,
     val sessions: List<CourseSession>,
+    val onlineWindows: List<OnlineCourseWindow> = emptyList(),
 )
