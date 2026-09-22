@@ -54,6 +54,7 @@
 | **P2** | FR-13 课程颜色、笔记、附件 | — |
 | **P2** | FR-14 考试倒计时 / 作业待办 | — |
 | **P0** | FR-15 统一视觉语言 | 轻松、柔和、偏卡通，同时保证课表信息密度与文字可读性 |
+| **P0** | FR-16 网课安排 | 支持直播网课与只有开放日期区间的异步网课，兼容混合教学 |
 
 ---
 
@@ -64,12 +65,17 @@
 | 课表 / 学期 | `Term` | 一个学期的完整课表容器，含起始日期、总周数、节次时间表 |
 | 课程 | `Course` | 一门课，如"高等数学A"，含名称、教师、颜色 |
 | 上课时间段 | `CourseSession` | 课程的**一次**上课安排：周几 + 第几节到第几节 + 周次 + 地点 |
+| 授课方式 | `SessionDeliveryMode` | 周期性时间段是线下课 `ONSITE`，还是直播网课 `LIVE_ONLINE` |
+| 网课开放期 | `OnlineCourseWindow` | 异步网课的一段可学习日期区间；没有周几、周次或节次，可配置多段 |
 | 周次表达式 | `weekSpec` | 描述"第几周上课"的字符串，如 `"1-16"`、`"1-9,11-18"`、`"2-16双"` |
 | 节次 | `Section` | 第 N 节课（1 开始），具体起止时间由节次时间表定义 |
 | 节次时间表 | `SectionTemplate` | 学期级配置：`第1节 08:00-08:45`、`第2节 08:55-09:40` … |
 | 当前周 | `currentWeek` | 由学期起始周一推算出的今天是第几教学周 |
 
 **关键建模决策：Course 与 CourseSession 是一对多。** 一门课可以有多个时间段（例如"高等数学A"周一 1-2 节、周三 3-4 节）。这是需求 2 中"同一门课程可以设置多个时间段"的直接映射。
+
+**网课不是 Course 的固定类型。** `Course` 可同时拥有线下 `CourseSession`、直播 `CourseSession`
+和多个 `OnlineCourseWindow`，从而表达「周一线下、周三直播，同时有异步资料开放期」等混合安排。
 
 ---
 
@@ -348,6 +354,16 @@ App 使用统一的「云朵课表」视觉语言：奶油纸张底色、蓝莓�
 - 核心正文和按钮文字与背景的对比度目标不低于 WCAG AA 的 `4.5:1`。
 - 详细颜色、圆角、页面层级和使用边界见 `docs/ui-style-guide.md`。
 
+### FR-16 异步网课与直播网课（P0，#39）
+
+- 周期性时间段可选「线下」或「直播」。直播仍使用周几、节次与周次，并可填写平台和课程链接。
+- 异步网课只使用开始日期与结束日期（精确到日），允许一门课配置多个开放期；平台、链接和备注均可为空。
+- 开放期必须满足 `startDate <= endDate`，并与所属学期至少重叠一天；允许部分日期位于学期外，保存时提示但不阻止。
+- 周视图在节次网格上方显示可折叠「网课」区域，按「进行中 → 未开始 → 已结束」排序；已结束项目灰化保留到学期结束。
+- 点击网课卡片优先进入 App 内课程详情；详情页有链接时显示「进入课程」，提醒按钮进入 M8 占位页。
+- 网课不进入桌面小组件，小组件继续只读取周期性 `CourseSession`。
+- 导入器同时接受 v1.0 与 v1.1；导出统一使用 v1.1。v1.0 的全部字段语义保持不变。
+
 ---
 
 ## 4. 数据模型
@@ -392,6 +408,22 @@ data class CourseSession(
     val endSection: Int,            // 含，>= startSection
     val weekSpec: String,           // 原始表达式，如 "1-16"
     val location: String? = null,
+    val note: String? = null,
+    val deliveryMode: SessionDeliveryMode = SessionDeliveryMode.ONSITE,
+    val onlinePlatform: String? = null,
+    val onlineUrl: String? = null,
+)
+
+enum class SessionDeliveryMode { ONSITE, LIVE_ONLINE }
+
+// core/model/OnlineCourseWindow.kt
+data class OnlineCourseWindow(
+    val id: Long = 0,
+    val courseId: Long,
+    val startDate: LocalDate,
+    val endDate: LocalDate,
+    val platform: String? = null,
+    val url: String? = null,
     val note: String? = null,
 )
 
@@ -471,8 +503,34 @@ data class CourseSessionEntity(
     val weekSpec: String,
     val location: String?,
     val note: String?,
+    val deliveryMode: String,       // ONSITE / LIVE_ONLINE
+    val onlinePlatform: String?,
+    val onlineUrl: String?,
+)
+
+@Entity(
+    tableName = "online_course_windows",
+    indices = [Index("courseId"), Index("startDateEpochDay"), Index("endDateEpochDay")],
+    foreignKeys = [ForeignKey(
+        entity = CourseEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["courseId"],
+        onDelete = ForeignKey.CASCADE,
+    )],
+)
+data class OnlineCourseWindowEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val courseId: Long,
+    val startDateEpochDay: Long,
+    val endDateEpochDay: Long,
+    val platform: String?,
+    val url: String?,
+    val note: String?,
 )
 ```
+
+数据库 v1 → v2 必须使用显式 Migration：给 `course_sessions` 增加三个直播字段，并创建
+`online_course_windows`。禁止使用 destructive migration，已有课表默认迁移为 `ONSITE`。
 
 **数据库初始化必须调用** `.enableMultiInstanceInvalidation()`（小组件更新与主 App 写库可能并发）。
 
@@ -540,11 +598,11 @@ val DEFAULT_SECTIONS = listOf(
 
 ---
 
-## 5. 导入文件格式规范 v1.0
+## 5. 导入文件格式规范 v1.0 / v1.1
 
 ### 5.1 三条设计原则
 
-1. **扁平化优先**：顶层是 `sessions` 数组，**一行 = 一个时间段**。不要求 AI 做课程归并（归并是 App 的职责，且 App 归并错了用户能在预览页纠正，AI 归并错了无法察觉）。
+1. **扁平化优先**：顶层 `sessions` 中一行 = 一个周期性时间段，`onlineWindows` 中一行 = 一个异步开放期。不要求 AI 做课程归并。
 2. **字符串化数值敏感项**：周次用表达式字符串、时间用 `"HH:mm"`，避免 AI 输出时间戳或错误数值类型。
 3. **可往返（round-trip）**：App 导出的文件必须能被 App 原样导入且结果一致。
 
@@ -555,10 +613,11 @@ val DEFAULT_SECTIONS = listOf(
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `format` | string | 是 | 固定 `"campus-timetable"` |
-| `version` | string | 是 | 固定 `"1.0"` |
+| `version` | string | 是 | `"1.0"` 或 `"1.1"`；导出统一写 `"1.1"` |
 | `term` | object | 是 | 学期信息 |
 | `sectionTemplates` | array | 否 | 节次时间表，缺省用默认值 |
 | `sessions` | array | 是 | 时间段列表，可为空数组 |
+| `onlineWindows` | array | v1.1 否 | 异步网课开放期列表，缺省为空 |
 
 **term**
 
@@ -588,6 +647,21 @@ val DEFAULT_SECTIONS = listOf(
 | `endSection` | int | 是 | ≥ startSection |
 | `weeks` | string | 是 | 周次表达式，见 4.3 |
 | `note` | string\|null | 否 | AI 的不确定说明会放这里 |
+| `deliveryMode` | string | v1.1 否 | `"onsite"` 或 `"liveOnline"`，缺省为 `"onsite"` |
+| `onlinePlatform` | string\|null | v1.1 否 | 直播平台 |
+| `onlineUrl` | string\|null | v1.1 否 | 直播链接 |
+
+**onlineWindows[i]（v1.1）**
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `name` | string | 是 | 课程名；与 `teacher` 一起参与课程归并 |
+| `teacher` | string\|null | 否 | 未知填 `null` |
+| `startDate` | string | 是 | `"YYYY-MM-DD"` |
+| `endDate` | string | 是 | `"YYYY-MM-DD"`，不得早于开始日期 |
+| `platform` | string\|null | 否 | 学习平台 |
+| `url` | string\|null | 否 | 课程链接，可为空 |
+| `note` | string\|null | 否 | 备注 |
 
 ### 5.3 JSON Schema
 
@@ -599,7 +673,7 @@ val DEFAULT_SECTIONS = listOf(
   "required": ["format", "version", "term", "sessions"],
   "properties": {
     "format": { "const": "campus-timetable" },
-    "version": { "const": "1.0" },
+    "version": { "enum": ["1.0", "1.1"] },
     "term": {
       "type": "object",
       "required": ["name", "startMonday", "totalWeeks"],
@@ -634,6 +708,25 @@ val DEFAULT_SECTIONS = listOf(
           "startSection": { "type": "integer", "minimum": 1 },
           "endSection": { "type": "integer", "minimum": 1 },
           "weeks": { "type": "string", "minLength": 1 },
+          "deliveryMode": { "enum": ["onsite", "liveOnline"] },
+          "onlinePlatform": { "type": ["string", "null"] },
+          "onlineUrl": { "type": ["string", "null"] },
+          "note": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "onlineWindows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "startDate", "endDate"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "teacher": { "type": ["string", "null"] },
+          "startDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "endDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "platform": { "type": ["string", "null"] },
+          "url": { "type": ["string", "null"] },
           "note": { "type": ["string", "null"] }
         }
       }
@@ -649,15 +742,20 @@ val DEFAULT_SECTIONS = listOf(
 ```json
 {
   "format": "campus-timetable",
-  "version": "1.0",
+  "version": "1.1",
   "term": { "name": "2026-2027 秋季学期", "startMonday": "2026-09-07", "totalWeeks": 18 },
   "sessions": [
     { "name": "高等数学A", "teacher": "张伟", "location": "教三-301",
       "dayOfWeek": 1, "startSection": 1, "endSection": 2, "weeks": "1-16" },
     { "name": "高等数学A", "teacher": "张伟", "location": "教三-301",
       "dayOfWeek": 3, "startSection": 3, "endSection": 4, "weeks": "1-16" },
-    { "name": "大学英语", "teacher": "李娜", "location": "外语楼-202",
-      "dayOfWeek": 2, "startSection": 3, "endSection": 4, "weeks": "1-16单" }
+    { "name": "大学英语", "teacher": "李娜", "location": null,
+      "dayOfWeek": 2, "startSection": 3, "endSection": 4, "weeks": "1-16单",
+      "deliveryMode": "liveOnline", "onlinePlatform": "腾讯会议", "onlineUrl": "https://example.edu/live" }
+  ],
+  "onlineWindows": [
+    { "name": "大学英语", "teacher": "李娜", "startDate": "2026-09-01", "endDate": "2026-12-31",
+      "platform": "学习通", "url": "https://example.edu/course", "note": null }
   ]
 }
 ```
@@ -667,7 +765,7 @@ val DEFAULT_SECTIONS = listOf(
 | 错误码 | 触发条件 | 用户提示 |
 |---|---|---|
 | `E_FORMAT` | `format` 不等于 `campus-timetable` | 这不是课表文件 |
-| `E_VERSION` | `version` 不是 `1.0` | 文件版本不受支持 |
+| `E_VERSION` | `version` 不是 `1.0` 或 `1.1` | 文件版本不受支持 |
 | `E_NO_JSON` | 文本中找不到合法 JSON 对象 | 未找到课表数据 |
 | `E_TERM_DATE` | `startMonday` 格式错误或不是周一 | 学期起始日必须是周一 |
 | `E_DOW` | `dayOfWeek` 不在 1..7 | 第 N 条：星期值应为 1-7 |
@@ -675,6 +773,8 @@ val DEFAULT_SECTIONS = listOf(
 | `E_SECTION_OOB` | 节次超出节次时间表范围 | 第 N 条：第 X 节未在节次时间表中定义 |
 | `E_WEEKSPEC` | 周次表达式无法解析 | 第 N 条：周次"xxx"无法识别 |
 | `E_TIME` | 节次起止时间格式错误或倒序 | 第 X 节时间设置有误 |
+| `E_DELIVERY_MODE` | 授课方式无法识别 | 第 N 条：授课方式应为线下或直播 |
+| `E_ONLINE_DATE` | 开放期日期格式错误、倒序或与学期完全不重叠 | 第 N 条网课：开放日期设置有误 |
 
 **错误必须携带记录序号**，让用户能在预览页定位并修复。
 
