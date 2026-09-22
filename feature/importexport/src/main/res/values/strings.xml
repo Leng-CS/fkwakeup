@@ -5,6 +5,7 @@
 
     <!-- 分步引导 -->
     <string name="import_step_1">第 1 步　去教务系统截一张完整的课表</string>
+    <string name="import_guide_title">四步，把截图变成课表</string>
     <string name="import_step_1_tip1">要能看到星期表头和左侧节次列，别只截课程格子</string>
     <string name="import_step_1_tip2">课表太长就分两次截，一次识别半张</string>
     <string name="import_step_1_tip3">避免模糊、反光、只截一半</string>

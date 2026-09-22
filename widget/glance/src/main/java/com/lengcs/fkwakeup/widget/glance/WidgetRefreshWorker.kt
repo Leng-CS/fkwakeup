@@ -20,7 +20,7 @@ class WidgetRefreshWorker(
 
     override suspend fun doWork(): Result =
         try {
-            FkwakeupWidget.refresh(applicationContext)
+            WidgetRefreshScheduler.refreshNow(applicationContext)
             Result.success()
         } catch (e: Exception) {
             Result.retry()

@@ -6,6 +6,8 @@
     <string name="course_empty">还没有课程，点上面新增</string>
     <string name="course_session_count">%1$d 个时间段</string>
     <string name="course_delete_done">已删除「%1$s」</string>
+    <string name="course_overview">共 %1$d 门课程 · 点击课程即可编辑</string>
+    <string name="course_tools">课表工具</string>
 
     <!-- 课程编辑 -->
     <string name="edit_title_new">新建课程</string>
@@ -46,15 +48,26 @@
     <string name="sections_title">节次时间表</string>
     <string name="sections_hint">各校节次时间不同，这里设置后课表与小组件都会按它显示</string>
     <string name="sections_add">+ 添加节次</string>
-    <string name="sections_start">开始</string>
-    <string name="sections_end">结束</string>
+    <string name="sections_remove_last">− 删除最后一节</string>
     <string name="sections_reset">恢复默认</string>
-    <string name="sections_time_hint">HH:mm</string>
     <string name="sections_saved">已保存</string>
     <string name="sections_invalid">第 %1$d 节时间有误（结束需晚于开始）</string>
+    <string name="sections_count">共 %1$d 节</string>
+    <string name="sections_global_settings">全局递推规则</string>
+    <string name="sections_start">开始</string>
+    <string name="sections_end">结束</string>
+    <string name="sections_hour">小时</string>
+    <string name="sections_minute">分钟</string>
+    <string name="sections_lesson_duration">单节时长</string>
+    <string name="sections_break_duration">课间时长</string>
+    <string name="sections_minutes">%1$d 分钟</string>
+    <string name="sections_edit_time">编辑第 %1$d 节时间</string>
+    <string name="sections_restore_auto">恢复自动递推</string>
+    <string name="sections_invalid_order">第 %1$d 节结束时间不得晚于第 %2$d 节开始时间</string>
 
     <!-- 导出 -->
     <string name="course_export">导出</string>
+    <string name="course_widgets">小组件</string>
     <string name="export_chooser_title">导出课表</string>
     <string name="export_subject">课表-%1$s</string>
     <string name="export_empty">还没有课表可以导出</string>

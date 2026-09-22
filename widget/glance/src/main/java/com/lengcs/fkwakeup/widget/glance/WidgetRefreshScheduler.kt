@@ -2,8 +2,12 @@ package com.lengcs.fkwakeup.widget.glance
 
 import android.content.Context
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import java.time.Duration
+import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
 
 /**
@@ -19,10 +23,31 @@ import java.util.concurrent.TimeUnit
 object WidgetRefreshScheduler {
 
     private const val UNIQUE_WORK_NAME = "fkwakeup_widget_refresh"
+    private const val UNIQUE_BOUNDARY_WORK_NAME = "fkwakeup_widget_boundary_refresh"
 
     /** 立即刷新一次 */
     suspend fun refreshNow(context: Context) {
         FkwakeupWidget.refresh(context)
+        scheduleBoundary(context, WidgetLoader.load(context)?.nextBoundary)
+    }
+
+    /** 排到下一节课开始或当前课结束的准确时刻；每次刷新都会重排下一次。 */
+    private fun scheduleBoundary(context: Context, boundary: LocalDateTime?) {
+        val workManager = WorkManager.getInstance(context)
+        if (boundary == null) {
+            workManager.cancelUniqueWork(UNIQUE_BOUNDARY_WORK_NAME)
+            return
+        }
+        val delay = Duration.between(LocalDateTime.now(), boundary)
+        if (delay.isZero || delay.isNegative) return
+        val request = OneTimeWorkRequestBuilder<WidgetRefreshWorker>()
+            .setInitialDelay(delay.toMillis(), TimeUnit.MILLISECONDS)
+            .build()
+        workManager.enqueueUniqueWork(
+            UNIQUE_BOUNDARY_WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
     }
 
     /** 登记 15 分钟周期任务（已存在则保留） */
