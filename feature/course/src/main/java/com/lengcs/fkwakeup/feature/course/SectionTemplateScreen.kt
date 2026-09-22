@@ -27,6 +27,9 @@ import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.model.DefaultSections
 import com.lengcs.fkwakeup.core.model.SectionTemplate
 import com.lengcs.fkwakeup.core.model.Term
+import com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +43,7 @@ import javax.inject.Inject
 class SectionTemplateViewModel @Inject constructor(
     private val termRepository: TermRepository,
     private val currentTermProvider: CurrentTermProvider,
+    @ApplicationContext private val appContext: android.content.Context,
 ) : ViewModel() {
 
     private val _term = MutableStateFlow<Term?>(null)
@@ -73,16 +77,33 @@ class SectionTemplateViewModel @Inject constructor(
                 _messages.trySend("第 ${overlap.first.index} 节结束时间不得晚于第 ${overlap.second.index} 节开始时间")
                 return@launch
             }
-            termRepository.replaceSections(termId, ordered)
-            _messages.trySend("已保存")
+            persistSections(termId, ordered, "已保存")
         }
     }
 
     fun resetToDefault() {
         viewModelScope.launch {
             val termId = _term.value?.id ?: return@launch
-            termRepository.replaceSections(termId, DefaultSections.forTerm(termId))
-            _messages.trySend("已恢复默认")
+            persistSections(termId, DefaultSections.forTerm(termId), "已恢复默认")
+        }
+    }
+
+    private suspend fun persistSections(termId: Long, sections: List<SectionTemplate>, success: String) {
+        try {
+            termRepository.replaceSections(termId, sections)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            _messages.trySend("保存失败，原时间表未更改，请重试")
+            return
+        }
+        _messages.trySend(success)
+        try {
+            WidgetRefreshScheduler.refreshNow(appContext)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Exception) {
+            _messages.trySend("时间表已保存，小组件暂未刷新")
         }
     }
 }

@@ -134,7 +134,7 @@ internal fun SectionTimingEditor(
             onDismiss = { editingSection = null },
             onConfirm = { startMinutes, endMinutes ->
                 val proposedSettings = settings.copy(lessonDurationMinutes = endMinutes - startMinutes)
-                val proposedOverrides = overrides.toMutableList().apply { replaceStart(section.index, startMinutes) }
+                val proposedOverrides = SectionTimingPlanner.overridesAfterEdit(overrides, section, startMinutes)
                 when (val proposedPlan = SectionTimingPlanner.build(sectionCount, proposedSettings, proposedOverrides)) {
                     is SectionTimingPlanResult.Valid -> {
                         settings = proposedSettings
@@ -194,16 +194,18 @@ private fun DurationDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            LabeledWheel(
-                label = title,
-                items = (minimum..maximum).map { "$it 分钟" },
-                selectedIndex = selectedIndex,
-                onSelectedChange = {
-                    selectedIndex = it
-                    validationError = null
-                },
-            )
-            validationError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LabeledWheel(
+                    label = title,
+                    items = (minimum..maximum).map { "$it 分钟" },
+                    selectedIndex = selectedIndex,
+                    onSelectedChange = {
+                        selectedIndex = it
+                        validationError = null
+                    },
+                )
+                validationError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
         },
         confirmButton = {
             TextButton(onClick = { validationError = onConfirm(selectedIndex + minimum) }) {
@@ -297,11 +299,6 @@ private fun ClockWheelRow(
             modifier = Modifier.weight(1f),
         )
     }
-}
-
-private fun MutableList<SectionTimingOverride>.replaceStart(index: Int, startMinutes: Int) {
-    removeAll { it.index == index }
-    add(SectionTimingOverride(index, startMinutes))
 }
 
 private fun PlannedSection.toTemplate(): SectionTemplate =

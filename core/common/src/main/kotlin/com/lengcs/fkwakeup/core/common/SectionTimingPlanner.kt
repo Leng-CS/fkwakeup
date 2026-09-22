@@ -33,6 +33,17 @@ sealed interface SectionTimingPlanResult {
  */
 object SectionTimingPlanner {
 
+    /** 只有开始时间真的改变才新增断点；确认原值或只改结束时间不锁定自动节次。 */
+    fun overridesAfterEdit(
+        overrides: List<SectionTimingOverride>,
+        section: PlannedSection,
+        startMinutes: Int,
+    ): List<SectionTimingOverride> = if (startMinutes == section.startMinutes) {
+        overrides.toList()
+    } else {
+        overrides.filterNot { it.index == section.index } + SectionTimingOverride(section.index, startMinutes)
+    }
+
     fun build(
         sectionCount: Int,
         settings: SectionTimingSettings,

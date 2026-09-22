@@ -77,7 +77,14 @@ class TermRepository @Inject constructor(
         sectionTemplateDao.getByTerm(termId).map { it.toDomain() }
 
     suspend fun replaceSections(termId: Long, templates: List<SectionTemplate>) {
-        sectionTemplateDao.deleteByTerm(termId)
-        sectionTemplateDao.insertAll(templates.map { it.toEntity() })
+        require(termId > 0) { "学期无效" }
+        require(templates.isNotEmpty()) { "至少需要一节课" }
+        val ordered = templates.sortedBy(SectionTemplate::index)
+        require(ordered.map { it.index } == (1..ordered.size).toList()) { "节次必须从 1 开始连续编号" }
+        require(ordered.zipWithNext().all { (previous, next) -> previous.endMinutes <= next.startMinutes }) {
+            "相邻节次时间重叠"
+        }
+        // 编辑草稿不持有学期 ID，以本次操作的目标学期为准。
+        sectionTemplateDao.replaceByTerm(termId, ordered.map { it.copy(termId = termId).toEntity() })
     }
 }

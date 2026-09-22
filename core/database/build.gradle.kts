@@ -8,9 +8,14 @@ plugins {
 android {
     namespace = "com.lengcs.fkwakeup.core.database"
     compileSdk = 35
+    useLibrary("android.test.runner")
+    useLibrary("android.test.base")
 
     defaultConfig {
         minSdk = 26
+        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
+        // 平台 runner 全量扫描依赖 dex 在 API 35 上可能启动超时，显式指定本模块测试。
+        testInstrumentationRunnerArguments["class"] = "com.lengcs.fkwakeup.core.database.SectionPersistenceTest"
     }
 
     compileOptions {
