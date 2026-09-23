@@ -17,6 +17,19 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ## M9 · MVP 后打磨与问题修复
 
+### #41 [Bug] 节次修复 APK 与 v2 数据库不兼容导致启动崩溃
+
+- Issue：[#41](https://github.com/Leng-CS/fkwakeup/issues/41)；分支：`fix/section-timing-v2-compat`；节次修复移植 commit `bb23697`。
+- 根因：模拟器已由网课分支升级到 Room v2；覆盖安装来自 v1 分支的节次修复 APK 后，启动报 `A migration from 2 to 1 was required but not found`。同一 `versionCode 2` 不代表内部数据库 schema 相同。
+- 在保留 v2 schema 和已有 1→2 迁移的网课分支上集成 #38 节次修复并重新构建 APK，不做破坏性降级或清除数据。
+- 验证：全量单测、3 项真实 SQLite 仪器测试及 Debug APK 构建通过；模拟器冷启动正常，周视图显示网课。覆盖安装前后数据库均为 v2，8 个学期、96 条节次、39 门课程、44 条时间段、1 条网课安排数量一致，无新增启动崩溃。
+
+### #38 [Bug] 节次全局规则更新异常及保存崩溃导致时间表丢失
+
+- Issue：[#38](https://github.com/Leng-CS/fkwakeup/issues/38)；原分支：`fix/section-timing-save`，实现 commit `497a116`；v2 兼容分支移植 commit `bb23697`。
+- 保存时绑定目标学期并以事务替换节次表，失败回滚旧数据；只在开始时间真正变化时新增断点；冲突提示与滚轮分开显示。
+- 验证与旧版已丢失时间表的恢复方式见 [调试记录](section-timing-debug-38.md)。
+
 ### #39 [需求] 支持异步网课与直播网课
 
 - Issue：[#39](https://github.com/Leng-CS/fkwakeup/issues/39)；分支：`feat/online-course-support`；实现 commits `970051a`、`9f6decd`、`4fa50df`、`0b2bc00`、`2173724`
