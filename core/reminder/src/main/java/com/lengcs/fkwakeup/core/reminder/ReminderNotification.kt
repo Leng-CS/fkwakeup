@@ -73,7 +73,8 @@ private data class ReminderPayload(
 
     fun contentIntent(context: Context): PendingIntent {
         val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: Intent()
-        launch.data = Uri.Builder().scheme("fkwakeup").authority("reminder").appendPath("course")
+        launch.data = Uri.Builder().scheme("fkwakeup").authority("reminder")
+            .appendPath(if (kind == ReminderOccurrenceKind.SESSION) "schedule" else "course")
             .appendQueryParameter("courseId", courseId.toString())
             .appendQueryParameter("date", occurrenceDate.toString()).build()
         launch.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)

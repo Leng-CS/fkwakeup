@@ -46,6 +46,7 @@ data class CourseReminderUiState(
     val asyncDeadlineMinutes: Int = 20 * 60,
     val choices: List<ReminderChoice> = emptyList(),
     val selectedKeys: Set<String> = emptySet(),
+    val occurrenceOffsets: Map<String, Pair<Int, Int?>> = emptyMap(),
     val saved: Boolean = false,
 )
 
@@ -69,8 +70,11 @@ internal fun buildReminderSavePlan(courseId: Long, value: CourseReminderUiState)
     )
     val overrides = value.choices.mapNotNull { choice ->
         val selected = choice.key in value.selectedKeys && value.scope != ReminderScope.OFF
-        if (selected == allFuture) null else ReminderOccurrenceOverride(
+        val offsets = if (selected) value.occurrenceOffsets[choice.key] else null
+        if (selected == allFuture && offsets == null) null else ReminderOccurrenceOverride(
             choice.key, courseId, choice.kind, choice.sourceId, choice.weekNumber, selected,
+            primaryMinutesBefore = offsets?.first,
+            secondaryMinutesBefore = offsets?.second,
         )
     }
     return ReminderSavePlan(rule, overrides)
@@ -142,6 +146,9 @@ class CourseReminderViewModel @Inject constructor(
             asyncDeadlineMinutes = rule.asyncDeadlineMinutesOfDay,
             choices = choices,
             selectedKeys = selected,
+            occurrenceOffsets = existingOverrides.mapNotNull { override ->
+                override.primaryMinutesBefore?.let { override.occurrenceKey to (it to override.secondaryMinutesBefore) }
+            }.toMap(),
         )
     }
 
@@ -155,6 +162,10 @@ class CourseReminderViewModel @Inject constructor(
     fun setAsyncDeadlineDays(value: Int) = update { it.copy(asyncDeadlineDays = value) }
     fun setAsyncDeadlineMinutes(value: Int) = update { it.copy(asyncDeadlineMinutes = value) }
     fun toggle(key: String) = update { state -> state.copy(selectedKeys = state.selectedKeys.toMutableSet().apply { if (!add(key)) remove(key) }) }
+    fun setOccurrenceOffsets(key: String, primary: Int, secondary: Int?) = update { state ->
+        state.copy(occurrenceOffsets = state.occurrenceOffsets + (key to (primary to secondary)))
+    }
+    fun clearOccurrenceOffsets(key: String) = update { state -> state.copy(occurrenceOffsets = state.occurrenceOffsets - key) }
     private fun update(block: (CourseReminderUiState) -> CourseReminderUiState) { _state.value = block(_state.value).copy(saved = false) }
 
     fun save() = viewModelScope.launch {

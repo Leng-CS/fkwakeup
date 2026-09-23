@@ -103,6 +103,15 @@ fun CourseReminderScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(choice.label)
                                 Text(choice.date.toString(), style = MaterialTheme.typography.bodySmall)
+                                if (choice.key in state.selectedKeys) {
+                                    OccurrenceTimeButton(
+                                        offset = state.occurrenceOffsets[choice.key],
+                                        defaultPrimary = state.primaryMinutes,
+                                        defaultSecondary = state.secondaryMinutes,
+                                        onSave = { first, second -> viewModel.setOccurrenceOffsets(choice.key, first, second) },
+                                        onReset = { viewModel.clearOccurrenceOffsets(choice.key) },
+                                    )
+                                }
                             }
                             Switch(checked = choice.key in state.selectedKeys, onCheckedChange = { viewModel.toggle(choice.key) })
                         }
@@ -180,6 +189,46 @@ private fun TimeButton(minutes: Int, onConfirm: (Int) -> Unit) {
     var open by remember { mutableStateOf(false) }
     TextButton(onClick = { open = true }) { Text("调整时间 · ${formatTime(minutes)}") }
     if (open) TimeWheelDialog(minutes, { open = false }, { onConfirm(it); open = false })
+}
+
+@Composable
+private fun OccurrenceTimeButton(
+    offset: Pair<Int, Int?>?,
+    defaultPrimary: Int,
+    defaultSecondary: Int?,
+    onSave: (Int, Int?) -> Unit,
+    onReset: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    TextButton(onClick = { open = true }) {
+        Text(offset?.let { "本次：提前${it.first}分钟" } ?: "使用课程默认时间")
+    }
+    if (open) {
+        var first by remember { mutableStateOf(offset?.first ?: defaultPrimary) }
+        var second by remember { mutableStateOf(offset?.second ?: defaultSecondary) }
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text("本次课程的提醒时间") },
+            text = {
+                Column {
+                    Text("第一次：提前 $first 分钟")
+                    LabeledWheel("分钟", (0..180).map(Int::toString), first.coerceIn(0, 180), { first = it }, Modifier.fillMaxWidth())
+                    Text("第二次：${second?.let { "提前 $it 分钟" } ?: "关闭"}")
+                    Row {
+                        TextButton(onClick = { second = null }) { Text("关闭第二次") }
+                        TextButton(onClick = { second = second ?: 5 }) { Text("设置第二次") }
+                    }
+                    second?.let { minutes ->
+                        LabeledWheel("分钟", (0..180).map(Int::toString), minutes.coerceIn(0, 180), { second = it }, Modifier.fillMaxWidth())
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { onSave(first, second); open = false }) { Text("保存") } },
+            dismissButton = {
+                TextButton(onClick = { onReset(); open = false }) { Text("恢复默认") }
+            },
+        )
+    }
 }
 
 @Composable

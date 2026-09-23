@@ -343,6 +343,7 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 - 新增 `core:reminder`：有精确闹钟权限时使用 `AlarmManager`，否则降级到 WorkManager 并在界面说明可能延迟；开机、时间/时区变化、应用升级和课表变更都会重排。
 - Android 13+ 按需申请通知权限；通知点击回到对应课程。周视图、课程详情、网课卡片和桌面小组件都已接入提醒设置。
 - 保存课程时保留已有时间段 ID，确保单次提醒在编辑课程内容后仍指向同一次课程。
+- 自审补齐单次课程的独立提前时间设置（含第二次提醒）；线下课程通知点击定位到当天周视图，异步网课通知进入课程详情。
 - 测试：`ReminderPlannerTest` 4 项、`ReminderSavePlanTest` 3 项；`:core:common:test :feature:settings:testDebugUnitTest :app:assembleDebug` 全绿。
 
 ---

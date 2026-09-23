@@ -35,4 +35,22 @@ class ReminderSavePlanTest {
         assertThat(plan.rule.recurringMode).isEqualTo(RecurringReminderMode.NONE)
         assertThat(plan.overrides).isEmpty()
     }
+
+    @Test
+    fun oneOccurrenceCanOverrideBothReminderTimes() {
+        val plan = buildReminderSavePlan(
+            9,
+            CourseReminderUiState(
+                scope = ReminderScope.ALL_FUTURE,
+                choices = listOf(first, second),
+                selectedKeys = setOf(first.key, second.key),
+                occurrenceOffsets = mapOf(second.key to (30 to 5)),
+            ),
+        )
+
+        assertThat(plan.overrides).hasSize(1)
+        assertThat(plan.overrides.single().occurrenceKey).isEqualTo(second.key)
+        assertThat(plan.overrides.single().primaryMinutesBefore).isEqualTo(30)
+        assertThat(plan.overrides.single().secondaryMinutesBefore).isEqualTo(5)
+    }
 }
