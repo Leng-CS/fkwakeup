@@ -7,6 +7,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.common.WeekSpecFallback
+import com.lengcs.fkwakeup.core.common.ConflictCandidate
+import com.lengcs.fkwakeup.core.common.CourseConflict
+import com.lengcs.fkwakeup.core.common.CourseConflictDetector
 import com.lengcs.fkwakeup.core.common.WeekSpecFormatter
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
 import com.lengcs.fkwakeup.core.database.repository.TermRepository
@@ -70,6 +73,8 @@ class ImportViewModel @Inject constructor(
         private set
 
     var importedTermId: Long? by mutableStateOf(null)
+        private set
+    var conflicts: List<CourseConflict> by mutableStateOf(emptyList())
         private set
 
     private val _messages = Channel<String>(Channel.BUFFERED)
@@ -253,8 +258,33 @@ class ImportViewModel @Inject constructor(
 
     // ---- 落库 ----
 
-    fun confirmImport() {
+    fun confirmImport(force: Boolean = false) {
         if (isImporting) return
+        if (!force) {
+            val candidates = courses.flatMapIndexed { courseIndex, course ->
+                course.sessions.mapNotNull { draft ->
+                    val startSection = draft.startSection ?: return@mapNotNull null
+                    val dayOfWeek = draft.dayOfWeek ?: return@mapNotNull null
+                    val mode = draft.deliveryMode ?: com.lengcs.fkwakeup.core.model.SessionDeliveryMode.ONSITE
+                    ConflictCandidate(
+                        course.name,
+                        CourseSession(
+                            courseId = -(courseIndex + 1L),
+                            dayOfWeek = dayOfWeek,
+                            startSection = startSection,
+                            endSection = draft.endSection ?: startSection,
+                            weekSpec = WeekSpecFallback.orFullTerm(draft.weeks, totalWeeks),
+                            deliveryMode = mode,
+                            onlinePlatform = if (mode == com.lengcs.fkwakeup.core.model.SessionDeliveryMode.LIVE_ONLINE) draft.onlinePlatform else null,
+                            onlineUrl = if (mode == com.lengcs.fkwakeup.core.model.SessionDeliveryMode.LIVE_ONLINE) draft.onlineUrl else null,
+                        ),
+                    )
+                }
+            }
+            conflicts = CourseConflictDetector.detect(candidates, totalWeeks)
+            if (conflicts.isNotEmpty()) return
+        }
+        conflicts = emptyList()
         viewModelScope.launch {
             isImporting = true
             val start = startDate ?: LocalDate.now()
@@ -321,6 +351,8 @@ class ImportViewModel @Inject constructor(
             com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
         }
     }
+
+    fun dismissConflicts() { conflicts = emptyList() }
 
     /**
      * 预览页编辑抽屉里「节次」滚轮的上限。

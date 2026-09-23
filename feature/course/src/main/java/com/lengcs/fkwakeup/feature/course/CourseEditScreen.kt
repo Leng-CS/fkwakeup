@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +41,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.designsystem.R as DsR
 import com.lengcs.fkwakeup.core.common.WeekSpecFormatter
+import com.lengcs.fkwakeup.core.common.ConflictCandidate
+import com.lengcs.fkwakeup.core.common.CourseConflict
+import com.lengcs.fkwakeup.core.common.CourseConflictDetector
 import com.lengcs.fkwakeup.core.common.WeekSpecParser
 import com.lengcs.fkwakeup.core.common.OnlineCourseTimeline
 import com.lengcs.fkwakeup.core.designsystem.picker.LabeledWheel
@@ -106,6 +110,8 @@ class CourseEditViewModel @Inject constructor(
 
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
+    private val _conflicts = MutableStateFlow<List<CourseConflict>>(emptyList())
+    val conflicts: StateFlow<List<CourseConflict>> = _conflicts
 
     val isNew: Boolean get() = courseId == 0L
 
@@ -170,6 +176,7 @@ class CourseEditViewModel @Inject constructor(
         sessions: List<EditableSession>,
         onlineWindows: List<EditableOnlineWindow>,
         onDone: () -> Unit,
+        force: Boolean = false,
     ) {
         viewModelScope.launch {
             // 没有当前学期时**不能静默 return** —— 用户点了保存却什么都不发生，
@@ -205,6 +212,36 @@ class CourseEditViewModel @Inject constructor(
                 _messages.trySend("有 ${sessions.size - valid.size} 个时间段未选择周次，已跳过")
             }
 
+            val prospective = valid.map {
+                CourseSession(
+                    id = it.id,
+                    courseId = courseId,
+                    dayOfWeek = it.dayOfWeek,
+                    startSection = it.startSection,
+                    endSection = it.endSection,
+                    weekSpec = WeekSpecFormatter.format(it.weeks, totalWeeks),
+                    location = it.location,
+                    note = it.note,
+                    deliveryMode = it.deliveryMode,
+                    onlinePlatform = if (it.deliveryMode == SessionDeliveryMode.LIVE_ONLINE) it.onlinePlatform else null,
+                    onlineUrl = if (it.deliveryMode == SessionDeliveryMode.LIVE_ONLINE) it.onlineUrl else null,
+                )
+            }
+            if (!force) {
+                val existing = courseRepository.observeCourses(termId).first()
+                    .filter { it.course.id != courseId }
+                    .flatMap { entry -> entry.sessions.map { ConflictCandidate(entry.course.name, it) } }
+                val found = CourseConflictDetector.detect(
+                    existing + prospective.map { ConflictCandidate(name.trim(), it) },
+                    totalWeeks,
+                ).filter { it.first.session.courseId == courseId || it.second.session.courseId == courseId }
+                if (found.isNotEmpty()) {
+                    _conflicts.value = found
+                    return@launch
+                }
+            }
+            _conflicts.value = emptyList()
+
             val course = Course(
                 id = courseId,
                 termId = termId,
@@ -222,21 +259,7 @@ class CourseEditViewModel @Inject constructor(
 
             courseRepository.replaceSessions(
                 targetId,
-                valid.map {
-                    CourseSession(
-                        id = it.id,
-                        courseId = targetId,
-                        dayOfWeek = it.dayOfWeek,
-                        startSection = it.startSection,
-                        endSection = it.endSection,
-                        weekSpec = WeekSpecFormatter.format(it.weeks, totalWeeks),
-                        location = it.location,
-                        note = it.note,
-                        deliveryMode = it.deliveryMode,
-                        onlinePlatform = if (it.deliveryMode == SessionDeliveryMode.LIVE_ONLINE) it.onlinePlatform else null,
-                        onlineUrl = if (it.deliveryMode == SessionDeliveryMode.LIVE_ONLINE) it.onlineUrl else null,
-                    )
-                },
+                prospective.map { it.copy(courseId = targetId) },
             )
             courseRepository.replaceOnlineWindows(
                 targetId,
@@ -249,6 +272,8 @@ class CourseEditViewModel @Inject constructor(
             onDone()
         }
     }
+
+    fun dismissConflicts() { _conflicts.value = emptyList() }
 
     fun delete(onDone: () -> Unit) {
         viewModelScope.launch {
@@ -273,6 +298,7 @@ fun CourseEditScreen(
     val loaded by viewModel.loaded.collectAsState()
     val initial by viewModel.initial.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val conflicts by viewModel.conflicts.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -434,6 +460,20 @@ fun CourseEditScreen(
                 }
             }
         }
+    }
+
+    if (conflicts.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissConflicts,
+            title = { Text("发现课程时间冲突") },
+            text = { Text(conflicts.take(3).joinToString("\n") { it.message() } + if (conflicts.size > 3) "\n另有 ${conflicts.size - 3} 项" else "") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.save(name.text, teacher.text, note.text, sessions.toList(), onlineWindows.toList(), onBack, force = true)
+                }) { Text("仍然保存") }
+            },
+            dismissButton = { TextButton(onClick = viewModel::dismissConflicts) { Text("返回修改") } },
+        )
     }
 }
 

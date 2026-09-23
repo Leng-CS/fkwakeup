@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
@@ -30,6 +31,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,6 +77,7 @@ fun ScheduleScreen(
     viewModel: ScheduleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val conflicts by viewModel.conflicts.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var editingBlock by remember { mutableStateOf<ScheduleBlock?>(null) }
 
@@ -175,6 +178,15 @@ fun ScheduleScreen(
                     com.lengcs.fkwakeup.core.model.ReminderOccurrenceOverride.sessionKey(block.session.id, state.displayWeek),
                 )
             },
+        )
+    }
+    if (conflicts.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissConflict,
+            title = { Text("发现课程时间冲突") },
+            text = { Text(conflicts.take(3).joinToString("\n") { it.message() }) },
+            confirmButton = { TextButton(onClick = viewModel::confirmConflict) { Text("仍然保存") } },
+            dismissButton = { TextButton(onClick = viewModel::dismissConflict) { Text("返回修改") } },
         )
     }
 }
