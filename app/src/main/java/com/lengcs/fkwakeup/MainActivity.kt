@@ -33,6 +33,7 @@ import com.lengcs.fkwakeup.feature.course.TermManageScreen
 import com.lengcs.fkwakeup.feature.importexport.ImportFlow
 import com.lengcs.fkwakeup.feature.schedule.ScheduleScreen
 import com.lengcs.fkwakeup.feature.settings.WidgetSettingsScreen
+import com.lengcs.fkwakeup.feature.settings.CourseReminderScreen
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDate
 
@@ -41,17 +42,21 @@ object Routes {
     const val IMPORT = "import"
     const val MANAGE = "manage"
     const val WIDGET_SETTINGS = "widget-settings"
-    const val ALARM_PLACEHOLDER = "alarm-placeholder"
+    const val REMINDER = "reminder/{courseId}?occurrenceKey={occurrenceKey}"
     const val COURSE_EDIT = "course/{courseId}"
     const val TERM = "term"
     const val SECTIONS = "sections"
     fun courseEdit(courseId: Long = 0L) = "course/$courseId"
+    fun reminder(courseId: Long, occurrenceKey: String? = null) = buildString {
+        append("reminder/$courseId")
+        occurrenceKey?.let { append("?occurrenceKey=").append(Uri.encode(it)) }
+    }
 }
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val incomingText = mutableStateOf<String?>(null)
-    private val widgetLink = mutableStateOf<Uri?>(null)
+    private val appLink = mutableStateOf<Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,7 +65,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             FkwakeupTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    FkwakeupApp(sharedText = incomingText.value, widgetLink = widgetLink.value)
+                    FkwakeupApp(sharedText = incomingText.value, appLink = appLink.value)
                 }
             }
         }
@@ -74,23 +79,28 @@ class MainActivity : ComponentActivity() {
 
     private fun acceptIntent(intent: Intent?) {
         incomingText.value = intent?.getStringExtra(Intent.EXTRA_TEXT)
-        widgetLink.value = intent?.data?.takeIf { it.scheme == "fkwakeup" && it.host == "widget" }
+        appLink.value = intent?.data?.takeIf { it.scheme == "fkwakeup" }
     }
 }
 
 @Composable
-private fun FkwakeupApp(sharedText: String?, widgetLink: Uri?) {
+private fun FkwakeupApp(sharedText: String?, appLink: Uri?) {
     val navController = rememberNavController()
-    val targetDate = widgetLink?.takeIf { it.lastPathSegment == "schedule" }
+    val targetDate = appLink?.takeIf { it.lastPathSegment == "schedule" }
         ?.getQueryParameter("date")?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
     LaunchedEffect(sharedText) {
         if (!sharedText.isNullOrBlank()) navController.navigate(Routes.IMPORT) { launchSingleTop = true }
     }
-    LaunchedEffect(widgetLink) {
-        when (widgetLink?.lastPathSegment) {
+    LaunchedEffect(appLink) {
+        when (appLink?.lastPathSegment) {
             "schedule" -> navController.navigate(Routes.HOME) { launchSingleTop = true }
-            "alarm" -> navController.navigate(Routes.ALARM_PLACEHOLDER) { launchSingleTop = true }
+            "reminder" -> appLink.getQueryParameter("courseId")?.toLongOrNull()?.let { courseId ->
+                navController.navigate(Routes.reminder(courseId, appLink.getQueryParameter("occurrenceKey"))) { launchSingleTop = true }
+            }
+            "course" -> appLink.getQueryParameter("courseId")?.toLongOrNull()?.let { courseId ->
+                navController.navigate(Routes.courseEdit(courseId)) { launchSingleTop = true }
+            }
         }
     }
 
@@ -101,7 +111,8 @@ private fun FkwakeupApp(sharedText: String?, widgetLink: Uri?) {
                     onImportClick = { navController.navigate(Routes.IMPORT) },
                     onManageClick = { navController.navigate(Routes.MANAGE) },
                     onOnlineCourseClick = { navController.navigate(Routes.courseEdit(it)) },
-                    onOnlineAlarmClick = { navController.navigate(Routes.ALARM_PLACEHOLDER) },
+                    onOnlineAlarmClick = { navController.navigate(Routes.reminder(it)) },
+                    onReminderClick = { courseId, key -> navController.navigate(Routes.reminder(courseId, key)) },
                     targetDate = targetDate,
                     modifier = Modifier.padding(padding),
                 )
@@ -118,8 +129,14 @@ private fun FkwakeupApp(sharedText: String?, widgetLink: Uri?) {
             )
         }
         composable(Routes.WIDGET_SETTINGS) { WidgetSettingsScreen(onBack = { navController.popBackStack() }) }
-        composable(Routes.ALARM_PLACEHOLDER) { AlarmPlaceholder(onBack = { navController.popBackStack() }) }
-        composable(Routes.COURSE_EDIT) { CourseEditScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.REMINDER) { CourseReminderScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.COURSE_EDIT) { entry ->
+            val courseId = entry.arguments?.getString("courseId")?.toLongOrNull() ?: 0L
+            CourseEditScreen(
+                onBack = { navController.popBackStack() },
+                onReminder = { if (courseId > 0L) navController.navigate(Routes.reminder(courseId)) },
+            )
+        }
         composable(Routes.TERM) { TermManageScreen(onBack = { navController.popBackStack() }) }
         composable(Routes.SECTIONS) { SectionTemplateScreen(onBack = { navController.popBackStack() }) }
         composable(Routes.IMPORT) {
@@ -133,20 +150,6 @@ private fun FkwakeupApp(sharedText: String?, widgetLink: Uri?) {
                     modifier = Modifier.padding(padding),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun AlarmPlaceholder(onBack: () -> Unit) {
-    Scaffold { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text("课程提醒将在 M8 提供", style = MaterialTheme.typography.titleMedium)
-            Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) { Text("返回") }
         }
     }
 }

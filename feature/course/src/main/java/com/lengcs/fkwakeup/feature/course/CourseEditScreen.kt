@@ -69,6 +69,7 @@ import java.time.LocalDate
  * 周次用**集合**表示（UI 是点选），保存时再由 `WeekSpecFormatter` 转成表达式。
  */
 data class EditableSession(
+    val id: Long = 0L,
     val dayOfWeek: Int = 1,
     val startSection: Int = 1,
     val endSection: Int = 2,
@@ -141,6 +142,7 @@ class CourseEditViewModel @Inject constructor(
                         note = entry.course.note.orEmpty(),
                         sessions = entry.sessions.map {
                             EditableSession(
+                                id = it.id,
                                 dayOfWeek = it.dayOfWeek,
                                 startSection = it.startSection,
                                 endSection = it.endSection,
@@ -222,6 +224,7 @@ class CourseEditViewModel @Inject constructor(
                 targetId,
                 valid.map {
                     CourseSession(
+                        id = it.id,
                         courseId = targetId,
                         dayOfWeek = it.dayOfWeek,
                         startSection = it.startSection,
@@ -241,6 +244,7 @@ class CourseEditViewModel @Inject constructor(
             )
             // 写库后主动刷新小组件，否则要等 15 分钟兜底
             com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler.refreshNow(appContext)
+            com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
             _messages.trySend("已保存")
             onDone()
         }
@@ -250,6 +254,7 @@ class CourseEditViewModel @Inject constructor(
         viewModelScope.launch {
             if (!isNew) {
                 courseRepository.getCourse(courseId)?.let { courseRepository.deleteCourse(it) }
+                com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
                 _messages.trySend("已删除")
             }
             onDone()
@@ -261,6 +266,7 @@ class CourseEditViewModel @Inject constructor(
 @Composable
 fun CourseEditScreen(
     onBack: () -> Unit,
+    onReminder: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: CourseEditViewModel = hiltViewModel(),
 ) {
@@ -417,6 +423,9 @@ fun CourseEditScreen(
             }
 
             if (!viewModel.isNew) {
+                OutlinedButton(onClick = onReminder, modifier = Modifier.fillMaxWidth()) {
+                    Text("提醒设置")
+                }
                 OutlinedButton(
                     onClick = { viewModel.delete(onBack) },
                     modifier = Modifier.fillMaxWidth(),

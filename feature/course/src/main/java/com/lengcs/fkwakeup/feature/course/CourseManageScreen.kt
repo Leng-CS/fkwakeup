@@ -122,6 +122,7 @@ class CourseManageViewModel @Inject constructor(
         viewModelScope.launch {
             courseRepository.deleteCourse(course.course)
             WidgetRefreshScheduler.refreshNow(appContext)
+            com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
             _messages.trySend("已删除「${course.course.name}」")
         }
     }

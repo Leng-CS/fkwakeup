@@ -31,6 +31,7 @@ include(":core:datastore")
 include(":core:designsystem")
 include(":core:importer")
 include(":core:exporter")
+include(":core:reminder")
 
 include(":feature:schedule")
 include(":feature:course")

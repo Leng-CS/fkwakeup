@@ -35,7 +35,7 @@ import com.lengcs.fkwakeup.core.common.OnlineCoursePhase
 internal fun OnlineCourseSection(
     items: List<OnlineCourseItem>,
     onCourseClick: (Long) -> Unit,
-    onAlarmClick: () -> Unit,
+    onAlarmClick: (Long) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(true) }
     var endedExpanded by remember { mutableStateOf(false) }
@@ -84,7 +84,7 @@ internal fun OnlineCourseSection(
 private fun OnlineCourseCard(
     item: OnlineCourseItem,
     onCourseClick: (Long) -> Unit,
-    onAlarmClick: () -> Unit,
+    onAlarmClick: (Long) -> Unit,
 ) {
     val ended = item.phase == OnlineCoursePhase.ENDED
     val alarmDescription = stringResource(R.string.online_alarm_cd)
@@ -123,7 +123,7 @@ private fun OnlineCourseCard(
                     ?.let { Text(it.joinToString(" · "), style = MaterialTheme.typography.labelSmall) }
             }
             IconButton(
-                onClick = onAlarmClick,
+                onClick = { onAlarmClick(item.course.id) },
                 modifier = Modifier.semantics { contentDescription = alarmDescription },
             ) { Text("⏰") }
         }

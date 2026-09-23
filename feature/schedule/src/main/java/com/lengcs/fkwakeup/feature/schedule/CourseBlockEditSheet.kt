@@ -56,6 +56,7 @@ fun CourseBlockEditSheet(
         note: String?,
     ) -> Unit,
     onDelete: () -> Unit,
+    onReminder: () -> Unit,
 ) {
     var state by remember(block.course.id, block.session.id) {
         mutableStateOf(
@@ -110,6 +111,7 @@ fun CourseBlockEditSheet(
                 onDelete = { confirmDelete = true },
                 onCancel = onDismiss,
             )
+            TextButton(onClick = onReminder, modifier = Modifier.fillMaxWidth()) { Text("⏰ 设置这次或以后课程的提醒") }
 
             if (weeksError) {
                 Text(

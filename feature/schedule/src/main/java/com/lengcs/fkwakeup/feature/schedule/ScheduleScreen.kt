@@ -68,7 +68,8 @@ fun ScheduleScreen(
     onImportClick: () -> Unit,
     onManageClick: () -> Unit,
     onOnlineCourseClick: (Long) -> Unit,
-    onOnlineAlarmClick: () -> Unit,
+    onOnlineAlarmClick: (Long) -> Unit,
+    onReminderClick: (Long, String) -> Unit,
     targetDate: java.time.LocalDate? = null,
     modifier: Modifier = Modifier,
     viewModel: ScheduleViewModel = hiltViewModel(),
@@ -167,6 +168,12 @@ fun ScheduleScreen(
             },
             onDelete = {
                 viewModel.deleteBlock(block) { editingBlock = null }
+            },
+            onReminder = {
+                onReminderClick(
+                    block.course.id,
+                    com.lengcs.fkwakeup.core.model.ReminderOccurrenceOverride.sessionKey(block.session.id, state.displayWeek),
+                )
             },
         )
     }

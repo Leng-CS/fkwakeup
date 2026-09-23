@@ -209,6 +209,7 @@ class ScheduleViewModel @Inject constructor(
             )
 
             WidgetRefreshScheduler.refreshNow(appContext)
+            com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
             _messages.trySend("已保存")
             onDone()
         }
@@ -219,6 +220,7 @@ class ScheduleViewModel @Inject constructor(
         viewModelScope.launch {
             courseRepository.deleteSession(block.session)
             WidgetRefreshScheduler.refreshNow(appContext)
+            com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
             _messages.trySend("已删除该时间段")
             onDone()
         }

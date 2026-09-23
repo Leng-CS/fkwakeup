@@ -23,6 +23,9 @@ import java.util.Locale
 /** 小组件中一条独立的课程时间段。 */
 data class WidgetLesson(
     val stableId: String,
+    val courseId: Long,
+    val sessionId: Long,
+    val weekNumber: Int,
     val date: LocalDate,
     val dateText: String,
     val name: String,
@@ -125,6 +128,9 @@ class WidgetDataProvider(
                 val end = sectionTimes[session.endSection] ?: continue
                 result += WidgetLesson(
                     stableId = "${date.toEpochDay()}-${session.id}",
+                    courseId = course.course.id,
+                    sessionId = session.id,
+                    weekNumber = week,
                     date = date,
                     dateText = formatDate(date),
                     name = course.course.name,

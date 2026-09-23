@@ -112,6 +112,7 @@ class SectionTemplateViewModel @Inject constructor(
         _messages.trySend(success)
         try {
             WidgetRefreshScheduler.refreshNow(appContext)
+            com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {

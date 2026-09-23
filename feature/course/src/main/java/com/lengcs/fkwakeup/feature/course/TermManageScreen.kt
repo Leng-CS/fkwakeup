@@ -97,6 +97,7 @@ class TermManageViewModel @Inject constructor(
             )
             settingsRepository.setCurrentTerm(id)
             _currentTermId.value = id
+            com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
             _messages.trySend("已创建学期")
         }
     }
@@ -127,6 +128,7 @@ class TermManageViewModel @Inject constructor(
                 _currentTermId.value = next
             }
             _messages.trySend("已删除学期")
+            com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
         }
     }
 
@@ -136,6 +138,7 @@ class TermManageViewModel @Inject constructor(
             _currentTermId.value = term.id
             // 小组件也跟着切，否则桌面上还停留在上个学期
             WidgetRefreshScheduler.refreshNow(appContext)
+            com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
             _messages.trySend("已切换到「${term.name}」")
         }
     }
