@@ -8,6 +8,7 @@ import com.lengcs.fkwakeup.core.common.WeekSpecParser
 import com.lengcs.fkwakeup.core.database.repository.CourseRepository
 import com.lengcs.fkwakeup.core.database.repository.CurrentTermProvider
 import com.lengcs.fkwakeup.core.database.repository.ReminderRepository
+import com.lengcs.fkwakeup.core.datastore.SettingsRepository
 import com.lengcs.fkwakeup.core.model.CourseReminderRule
 import com.lengcs.fkwakeup.core.model.RecurringReminderMode
 import com.lengcs.fkwakeup.core.model.ReminderOccurrenceKind
@@ -96,6 +97,7 @@ class CourseReminderViewModel @Inject constructor(
     private val courseRepository: CourseRepository,
     private val currentTermProvider: CurrentTermProvider,
     private val reminderRepository: ReminderRepository,
+    private val settingsRepository: SettingsRepository,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val courseId = savedStateHandle.get<String>("courseId")?.toLongOrNull() ?: -1L
@@ -109,7 +111,10 @@ class CourseReminderViewModel @Inject constructor(
     private fun load() = viewModelScope.launch {
         val term = currentTermProvider.currentTerm() ?: return@launch finishLoading()
         val entry = courseRepository.getCourseWithSessions(courseId) ?: return@launch finishLoading()
-        val rule = reminderRepository.observeRule(courseId).first() ?: CourseReminderRule(courseId)
+        val rule = reminderRepository.observeRule(courseId).first() ?: CourseReminderRule(
+            courseId,
+            primaryMinutesBefore = settingsRepository.settings.first().reminderDefaultMinutesBefore,
+        )
         existingOverrides = reminderRepository.observeOverrides(courseId).first()
         val today = LocalDate.now()
         val choices = buildList {

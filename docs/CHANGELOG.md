@@ -344,6 +344,7 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 - Android 13+ 按需申请通知权限；通知点击回到对应课程。周视图、课程详情、网课卡片和桌面小组件都已接入提醒设置。
 - 保存课程时保留已有时间段 ID，确保单次提醒在编辑课程内容后仍指向同一次课程。
 - 自审补齐单次课程的独立提前时间设置（含第二次提醒）；线下课程通知点击定位到当天周视图，异步网课通知进入课程详情。
+- 新增「提醒管理」入口，可调整全局默认提前时间并进入本学期各课程的提醒设置；新课程提醒保持默认关闭。
 - 测试：`ReminderPlannerTest` 4 项、`ReminderSavePlanTest` 3 项；`:core:common:test :feature:settings:testDebugUnitTest :app:assembleDebug` 全绿。
 
 ---

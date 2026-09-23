@@ -1,12 +1,15 @@
 package com.lengcs.fkwakeup.feature.settings
 
 import android.Manifest
+import android.app.AlarmManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -48,7 +51,17 @@ fun CourseReminderScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    fun finishSave() {
+        viewModel.save()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            context.getSystemService(AlarmManager::class.java)?.canScheduleExactAlarms() == false
+        ) {
+            context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
+        }
+    }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) finishSave() else viewModel.save()
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -131,7 +144,18 @@ fun CourseReminderScreen(
                 }
                 TimeButton(state.asyncDeadlineMinutes, viewModel::setAsyncDeadlineMinutes)
             }
-            Button(onClick = viewModel::save, modifier = Modifier.fillMaxWidth()) { Text("保存提醒") }
+            Button(
+                onClick = {
+                    val enabling = state.scope != ReminderScope.OFF || state.asyncOpen || state.asyncDeadline
+                    if (enabling && Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.POST_NOTIFICATIONS,
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    else if (enabling) finishSave()
+                    else viewModel.save()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("保存提醒") }
             if (state.saved) Text("提醒已保存", color = MaterialTheme.colorScheme.primary)
         }
     }

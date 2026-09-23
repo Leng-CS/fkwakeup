@@ -34,6 +34,7 @@ import com.lengcs.fkwakeup.feature.importexport.ImportFlow
 import com.lengcs.fkwakeup.feature.schedule.ScheduleScreen
 import com.lengcs.fkwakeup.feature.settings.WidgetSettingsScreen
 import com.lengcs.fkwakeup.feature.settings.CourseReminderScreen
+import com.lengcs.fkwakeup.feature.settings.ReminderManagementScreen
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDate
 
@@ -43,6 +44,7 @@ object Routes {
     const val MANAGE = "manage"
     const val WIDGET_SETTINGS = "widget-settings"
     const val REMINDER = "reminder/{courseId}?occurrenceKey={occurrenceKey}"
+    const val REMINDER_MANAGEMENT = "reminder-management"
     const val COURSE_EDIT = "course/{courseId}"
     const val TERM = "term"
     const val SECTIONS = "sections"
@@ -126,10 +128,17 @@ private fun FkwakeupApp(sharedText: String?, appLink: Uri?) {
                 onManageTerms = { navController.navigate(Routes.TERM) },
                 onManageSections = { navController.navigate(Routes.SECTIONS) },
                 onManageWidgets = { navController.navigate(Routes.WIDGET_SETTINGS) },
+                onManageReminders = { navController.navigate(Routes.REMINDER_MANAGEMENT) },
             )
         }
         composable(Routes.WIDGET_SETTINGS) { WidgetSettingsScreen(onBack = { navController.popBackStack() }) }
         composable(Routes.REMINDER) { CourseReminderScreen(onBack = { navController.popBackStack() }) }
+        composable(Routes.REMINDER_MANAGEMENT) {
+            ReminderManagementScreen(
+                onBack = { navController.popBackStack() },
+                onCourseClick = { navController.navigate(Routes.reminder(it)) },
+            )
+        }
         composable(Routes.COURSE_EDIT) { entry ->
             val courseId = entry.arguments?.getString("courseId")?.toLongOrNull() ?: 0L
             CourseEditScreen(

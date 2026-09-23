@@ -137,6 +137,7 @@ fun CourseManageScreen(
     onManageTerms: () -> Unit,
     onManageSections: () -> Unit,
     onManageWidgets: () -> Unit,
+    onManageReminders: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: CourseManageViewModel = hiltViewModel(),
 ) {
@@ -230,6 +231,12 @@ fun CourseManageScreen(
                     modifier = Modifier.weight(1f),
                 )
             }
+
+            ToolButton(
+                text = "提醒管理",
+                onClick = onManageReminders,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            )
 
             Button(
                 onClick = onAddCourse,
