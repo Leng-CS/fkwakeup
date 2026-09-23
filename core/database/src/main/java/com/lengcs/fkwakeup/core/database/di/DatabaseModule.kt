@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.lengcs.fkwakeup.core.database.AppDatabase
 import com.lengcs.fkwakeup.core.database.MIGRATION_1_2
+import com.lengcs.fkwakeup.core.database.MIGRATION_2_3
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,7 +22,7 @@ object DatabaseModule {
         Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.DB_NAME)
             // 小组件进程与主进程可能并发读写，必须开启多实例失效
             .enableMultiInstanceInvalidation()
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides
@@ -38,4 +39,7 @@ object DatabaseModule {
 
     @Provides
     fun provideOnlineCourseWindowDao(db: AppDatabase) = db.onlineCourseWindowDao()
+
+    @Provides
+    fun provideReminderDao(db: AppDatabase) = db.reminderDao()
 }

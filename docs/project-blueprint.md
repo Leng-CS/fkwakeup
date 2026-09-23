@@ -371,6 +371,21 @@ App 使用统一的「云朵课表」视觉语言：奶油纸张底色、蓝莓�
 - 网课不进入桌面小组件；小组件只读取 `deliveryMode = ONSITE` 的周期性 `CourseSession`，直播时间段和异步开放期都排除。
 - 导入器同时接受 v1.0 与 v1.1；导出统一使用 v1.1。v1.0 的全部字段语义保持不变。
 
+### FR-17 课程提醒（P1，M8，#43）
+
+- 线下、直播与异步网课均可提醒。固定时间课程支持「仅本次」「本学期未来每次」「自定义日期」；每次最多两个提醒，默认提前 10 分钟。
+- 规则分为课程默认与单次例外。单次例外可启用、排除或覆盖提前时间；时间段在同一周内移动时提醒随之移动，时间段或周次被删除时自动取消。
+- 异步网课分别提供开放日提醒（默认当天 09:00）和截止提醒（默认提前 1 天 20:00）。
+- Android 12+ 使用用户授权的 `SCHEDULE_EXACT_ALARM`；未授权时使用 WorkManager 降级并标明可能延迟。Android 13+ 在用户首次开启提醒时申请通知权限。
+- 开机、应用升级、系统时间/时区变化、课程修改和切换当前学期后统一重建未来提醒。错过不超过 15 分钟可补发，超过 15 分钟直接丢弃。
+- 通知点击优先回到 App：固定课程定位周视图，网课进入课程详情；不使用全屏通知，不从通知直接打开外部链接。
+- 提醒设置只保存在 App 本地数据库，不进入 `campus-timetable v1.1` 导入导出契约。
+
+### FR-18 课程冲突检测（P1，M8，#44）
+
+- 星期相同、周次集合相交且节次范围重叠时判定冲突；线下与直播之间同样检测，相邻节次与异步开放期不算冲突。
+- 课程编辑、周视图快捷编辑和导入确认共用同一纯逻辑检测器。提示具体课程、周次和节次，并允许「返回修改」或「仍然保存」。
+
 ---
 
 ## 4. 数据模型
@@ -432,6 +447,33 @@ data class OnlineCourseWindow(
     val platform: String? = null,
     val url: String? = null,
     val note: String? = null,
+)
+
+enum class RecurringReminderMode { NONE, ALL_FUTURE }
+
+data class CourseReminderRule(
+    val courseId: Long,
+    val recurringMode: RecurringReminderMode = RecurringReminderMode.NONE,
+    val primaryMinutesBefore: Int = 10,
+    val secondaryMinutesBefore: Int? = null,
+    val asyncOpenEnabled: Boolean = false,
+    val asyncOpenMinutesOfDay: Int = 9 * 60,
+    val asyncDeadlineEnabled: Boolean = false,
+    val asyncDeadlineDaysBefore: Int = 1,
+    val asyncDeadlineMinutesOfDay: Int = 20 * 60,
+)
+
+enum class ReminderOccurrenceKind { SESSION, ASYNC_OPEN, ASYNC_DEADLINE }
+
+data class ReminderOccurrenceOverride(
+    val occurrenceKey: String,       // session:{id}:week:{n} / window:{id}:open|deadline
+    val courseId: Long,
+    val kind: ReminderOccurrenceKind,
+    val sourceId: Long,
+    val weekNumber: Int? = null,
+    val enabled: Boolean,
+    val primaryMinutesBefore: Int? = null, // null = 跟随课程规则
+    val secondaryMinutesBefore: Int? = null,
 )
 
 // 派生：weekSpec 解析后的周集合，不落库，读取时计算
@@ -534,10 +576,16 @@ data class OnlineCourseWindowEntity(
     val url: String?,
     val note: String?,
 )
+
+@Entity(tableName = "course_reminder_rules", /* courseId 外键级联 */)
+data class CourseReminderRuleEntity(/* 与 CourseReminderRule 对应，courseId 为主键 */)
+
+@Entity(tableName = "reminder_occurrence_overrides", /* courseId 外键级联 */)
+data class ReminderOccurrenceOverrideEntity(/* occurrenceKey 为主键，其余字段与领域模型对应 */)
 ```
 
 数据库 v1 → v2 必须使用显式 Migration：给 `course_sessions` 增加三个直播字段，并创建
-`online_course_windows`。禁止使用 destructive migration，已有课表默认迁移为 `ONSITE`。
+`online_course_windows`。数据库 v2 → v3 创建两张提醒表。禁止使用 destructive migration，已有课表默认迁移为 `ONSITE` 且提醒关闭。
 
 **数据库初始化必须调用** `.enableMultiInstanceInvalidation()`（小组件更新与主 App 写库可能并发）。
 
