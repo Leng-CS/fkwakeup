@@ -173,12 +173,16 @@ fun ImportPreviewScreen(
     val windowCourseIndex = editingWindowCourse
     val windowIndex = editingWindow
     if (windowCourseIndex != null && windowIndex != null) {
-        val window = viewModel.courses.getOrNull(windowCourseIndex)?.onlineWindows?.getOrNull(windowIndex)
-        if (window != null) {
+        val windowCourse = viewModel.courses.getOrNull(windowCourseIndex)
+        val window = windowCourse?.onlineWindows?.getOrNull(windowIndex)
+        if (windowCourse != null && window != null) {
             OnlineWindowEditSheet(
+                courseName = windowCourse.name,
+                courseTeacher = windowCourse.teacher,
                 window = window,
-                onSave = {
-                    viewModel.updateOnlineWindow(windowCourseIndex, windowIndex, it)
+                onSave = { name, teacher, updatedWindow ->
+                    viewModel.renameCourse(windowCourseIndex, name, teacher)
+                    viewModel.updateOnlineWindow(windowCourseIndex, windowIndex, updatedWindow)
                     editingWindowCourse = null
                     editingWindow = null
                 },

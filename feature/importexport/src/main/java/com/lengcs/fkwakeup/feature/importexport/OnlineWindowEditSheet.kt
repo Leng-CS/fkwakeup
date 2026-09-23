@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -30,22 +32,31 @@ import java.time.ZoneOffset
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun OnlineWindowEditSheet(
+    courseName: String,
+    courseTeacher: String?,
     window: OnlineWindowDraft,
-    onSave: (OnlineWindowDraft) -> Unit,
+    onSave: (String, String?, OnlineWindowDraft) -> Unit,
     onConvertToLive: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var startDate by remember(window) { mutableStateOf(window.startDate) }
     var endDate by remember(window) { mutableStateOf(window.endDate) }
+    var name by remember(window) { mutableStateOf(courseName) }
+    var teacher by remember(window) { mutableStateOf(courseTeacher.orEmpty()) }
     var platform by remember(window) { mutableStateOf(window.platform.orEmpty()) }
     var url by remember(window) { mutableStateOf(window.url.orEmpty()) }
     var note by remember(window) { mutableStateOf(window.note.orEmpty()) }
-    val valid = startDate?.let { start -> endDate?.let { end -> !end.isBefore(start) } } == true
+    val valid = name.isNotBlank() && startDate?.let { start -> endDate?.let { end -> !end.isBefore(start) } } == true
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Text(stringResource(R.string.preview_online_edit_title))
             Text(stringResource(R.string.preview_online_edit_hint))
+            OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.preview_course_name)) }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(teacher, { teacher = it }, label = { Text(stringResource(R.string.preview_course_teacher)) }, modifier = Modifier.fillMaxWidth())
             ImportDatePickerField(stringResource(R.string.preview_online_start), startDate) { startDate = it }
             ImportDatePickerField(stringResource(R.string.preview_online_end), endDate) { endDate = it }
             OutlinedTextField(platform, { platform = it }, label = { Text(stringResource(R.string.preview_online_platform)) }, modifier = Modifier.fillMaxWidth())
@@ -54,7 +65,7 @@ internal fun OnlineWindowEditSheet(
             if (!valid) Text(stringResource(R.string.preview_online_invalid))
             Button(
                 onClick = {
-                    onSave(window.copy(
+                    onSave(name.trim(), teacher.trim().ifBlank { null }, window.copy(
                         startDate = startDate, endDate = endDate,
                         platform = platform.trim().ifBlank { null }, url = url.trim().ifBlank { null },
                         note = note.replace("待确认授课方式", "").trim().ifBlank { null },

@@ -56,6 +56,8 @@
     <string name="preview_live_online">直播网课</string>
     <string name="preview_online_window">异步网课 · %1$s 至 %2$s</string>
     <string name="preview_online_edit_title">网课安排</string>
+    <string name="preview_course_name">课程名称</string>
+    <string name="preview_course_teacher">任课教师</string>
     <string name="preview_online_edit_hint">异步网课只有开放日期；若按固定星期和节次直播，请切换为直播课。</string>
     <string name="preview_online_start">开放日期</string>
     <string name="preview_online_end">截止日期</string>
