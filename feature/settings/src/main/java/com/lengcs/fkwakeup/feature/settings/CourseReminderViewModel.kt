@@ -24,6 +24,16 @@ import javax.inject.Inject
 
 enum class ReminderScope { OFF, ALL_FUTURE, CUSTOM }
 
+internal fun resolveReminderScope(
+    recurringMode: RecurringReminderMode,
+    hasEnabledOverrides: Boolean,
+    requestedKey: String?,
+): ReminderScope = when {
+    recurringMode == RecurringReminderMode.ALL_FUTURE -> ReminderScope.ALL_FUTURE
+    requestedKey != null || hasEnabledOverrides -> ReminderScope.CUSTOM
+    else -> ReminderScope.OFF
+}
+
 data class ReminderChoice(
     val key: String,
     val kind: ReminderOccurrenceKind,
@@ -120,12 +130,7 @@ class CourseReminderViewModel @Inject constructor(
             }
         }.sortedBy { it.date }
         val explicit = existingOverrides.filter { it.enabled }.mapTo(mutableSetOf()) { it.occurrenceKey }
-        val scope = when {
-            requestedKey != null -> ReminderScope.CUSTOM
-            rule.recurringMode == RecurringReminderMode.ALL_FUTURE -> ReminderScope.ALL_FUTURE
-            explicit.isNotEmpty() -> ReminderScope.CUSTOM
-            else -> ReminderScope.OFF
-        }
+        val scope = resolveReminderScope(rule.recurringMode, explicit.isNotEmpty(), requestedKey)
         val selected = when (scope) {
             ReminderScope.ALL_FUTURE -> choices.mapTo(mutableSetOf()) { it.key }.apply {
                 removeAll(existingOverrides.filter { !it.enabled }.map { it.occurrenceKey }.toSet())

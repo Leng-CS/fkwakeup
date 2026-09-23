@@ -53,4 +53,10 @@ class ReminderSavePlanTest {
         assertThat(plan.overrides.single().primaryMinutesBefore).isEqualTo(30)
         assertThat(plan.overrides.single().secondaryMinutesBefore).isEqualTo(5)
     }
+
+    @Test
+    fun openingOneOccurrenceDoesNotTurnOffExistingRecurringRule() {
+        assertThat(resolveReminderScope(RecurringReminderMode.ALL_FUTURE, false, second.key))
+            .isEqualTo(ReminderScope.ALL_FUTURE)
+    }
 }
