@@ -1,60 +1,48 @@
 # fkwakeup
 
-Android 课程表 App。把教务系统里那张难用的课表图片，30 秒变成一个可查询、可放桌面小组件的课表。
+**把一张教务课表截图，变成随手可查的课程表。** fkwakeup 是一款轻松、柔和风格的 Android 课程表 App：借助你常用的 AI 识别课表，再由 App 导入、校对和管理课程，也可以手动创建课表。
 
-## 它是怎么工作的
+## 主要功能
 
+- **AI 辅助导入**：复制 App 提供的提示词，把教务课表截图交给 ChatGPT、Claude、豆包、通义或其他 AI，再粘贴识别结果。导入器支持线下课、固定节次的直播网课，以及按日期开放的异步网课；不完整信息会留在预览页供你补全。
+- **周视图与课程管理**：查看课程、周次、节次和教室，编辑课程与多个上课时间段，切换学期，并配置各节课的时间。
+- **桌面小组件**：提供 `4×1`、`4×2`、`4×4` 三种显示模式，可纵向浏览课程，并为每个组件单独设置范围、标记样式和背景。
+- **课程提醒与冲突检测**：配置课程提醒和单次课程例外；保存有时间重叠的课程前会提示冲突。
+- **离线数据与备份**：课表保存在设备本地，可导出备份并重新导入。
+
+## 获取应用
+
+从 [GitHub Releases](https://github.com/Leng-CS/fkwakeup/releases/latest) 下载最新 APK。首个正式版本为 **v1.0.0**，支持 Android 8.0（API 26）及以上版本。
+
+## 从截图到课表
+
+1. 在教务系统截取完整课表，尽量包含星期、节次和周视图之外的网课区域。
+2. 在 App 导入页复制识别提示词，连同截图发给你常用的 AI。
+3. 将 AI 返回的 JSON 整段粘贴回 App。
+4. 在预览页核对学期、课程、时间段和网课安排，补齐提示的字段后确认导入。
+
+AI 只负责识别截图；课程数据由 App 在本地解析和保存。应用不要求注册账号，不提供云同步，也不会登录或抓取教务系统。
+
+## 开发
+
+项目使用 Kotlin、Jetpack Compose、Material 3、Room、DataStore、kotlinx.serialization、Hilt、Glance 和 WorkManager。
+
+在 Windows 上运行单元测试并构建调试 APK：
+
+```powershell
+.\gradlew.bat testDebugUnitTest :app:assembleDebug
 ```
-教务系统截图 → App 内一键复制提示词 → 交给任意 AI → 复制 AI 回复 → 回 App 粘贴
-    → 自动新建课表 → 预览纠偏 → 落库 → 桌面小组件随时可看
-```
 
-用户不需要手动录入，也不需要把文本存成文件。整个链路里 App 会自动剥离 AI 输出的代码块围栏与前后正文，只取 JSON 部分。
-
-## 功能
-
-| 状态 | 功能 |
-|---|---|
-| ✅ | 导入建课表（粘贴 / 文件 / 从 AI App 分享进来，三条路径） |
-| ✅ | 手动建课表、多学期切换、课程增删改、一门课多个时间段 |
-| ✅ | 周视图网格、跨节次课程合并、当前节次与今日列高亮 |
-| ✅ | 点击课程块直接编辑（名称 / 教师 / 时间 / 地点 / 周次） |
-| ✅ | 自定义课块颜色（12 色预设 + 自动），同步到桌面小组件 |
-| ✅ | 桌面小组件（Glance，小 / 中 / 大三种尺寸） |
-| ✅ | 导出备份（可重新导入）、导入失败可让 AI 重新生成 |
-| ✅ | 节次时间表按学期配置 |
-| P1 | 上课前提醒、时间冲突检测 |
-| P2 | 节假日调休 |
-
-## 技术栈
-
-原生 Android，离线优先，无账号体系、无云同步、不抓取教务系统。
-
-- Kotlin + Jetpack Compose + Material3
-- Room / DataStore / kotlinx.serialization
-- Hilt + Coroutines + Flow
-- **Glance**（`androidx.glance:glance-appwidget`）—— 桌面小组件
-- WorkManager —— 小组件刷新调度
+APK 输出在 `app/build/outputs/apk/debug/app-debug.apk`。更多开发约定、数据模型和导入 JSON 格式见 [项目开发文档](docs/project-blueprint.md)；AI 提示词的维护来源见 [识别提示词文档](docs/recognition-prompt.md)。
 
 ## 文档
 
-| 文档 | 内容 |
-|---|---|
-| [`docs/project-blueprint.md`](docs/project-blueprint.md) | **主文档**。数据模型、导入格式规范、实现方案、难度评估、里程碑 |
-| [`docs/recognition-prompt.md`](docs/recognition-prompt.md) | App 内置提示词与全部 UI 文案，是 `strings.xml` 与 `res/raw` 的唯一来源 |
-| [`docs/timetable-sample.json`](docs/timetable-sample.json) | 导入格式示例，覆盖单双周、跳周、跨节次、空字段 |
-| [`docs/HANDOFF.md`](docs/HANDOFF.md) | 交接文档：项目导航、已定决策、工程环境注意事项。**换人/换模型接手时先读这个** |
-| [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | 变更记录：M7 之后的微调、Bug 修复与新增需求 |
-| [`AGENTS.md`](AGENTS.md) | 给 AI 编码助手的项目约定，开工前必读 |
-
-## 开发路线
-
-M0 工程骨架 → M1 数据层 → M2 导入解析 → M3 导入 UI → M4 周视图 → M5 课程与学期管理 → M6 小组件 → M7 导出打磨。
-
-**M0–M7 已完成。** M8（提醒通知）暂缓；M9 是 MVP 之后的打磨与问题修复，长期进行中，记录见 `docs/CHANGELOG.md`。
-
-每个里程碑的验收标准见主文档第 9 章。
+- [项目开发文档](docs/project-blueprint.md)：功能需求、数据模型、导入格式与验收标准
+- [课表识别提示词](docs/recognition-prompt.md)：App 使用的提示词与导入文案
+- [导入格式示例](docs/timetable-sample.json)：`campus-timetable` JSON 示例
+- [交接文档](docs/HANDOFF.md)：项目结构与工程注意事项
+- [变更记录](docs/CHANGELOG.md)：版本与迭代记录
 
 ## 许可
 
-Apache-2.0
+[Apache License 2.0](LICENSE)

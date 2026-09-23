@@ -8,6 +8,12 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ---
 
+## v1.0.0 · 2026-09-23
+
+- 首个正式版，整理并公开介绍项目功能、AI 截图导入流程、技术栈和本地数据原则。
+- M8 提醒（#43）、保存前冲突检测（#44）与截图网课识别（#47）进入正式版；相关分支及实现提交：feat/m8-course-reminders（4649876、80f8e59、fff2ad2、a3889ec、e5b92d1）、feat/m8-conflict-detection（365ecef、7289301）、feat/import-online-course-recognition（4c30afc、ecbfdfa）。
+- Android 版本升级为 versionCode 3 / versionName 1.0.0；GitHub Release 提供 APK 与 SHA-256 校验文件。
+
 ## v0.2.0-demo · 2026-09-22
 
 - 重构桌面小组件：统一单入口，支持 `4×1 / 4×2 / 4×4`、纵向课程列表、按实例配置、课程范围与多种背景样式。
