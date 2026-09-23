@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -150,6 +151,15 @@ fun ImportPreviewScreen(
                 },
             )
         }
+    }
+    if (viewModel.conflicts.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissConflicts,
+            title = { Text("发现课程时间冲突") },
+            text = { Text(viewModel.conflicts.take(3).joinToString("\n") { it.message() } + if (viewModel.conflicts.size > 3) "\n另有 ${viewModel.conflicts.size - 3} 项" else "") },
+            confirmButton = { TextButton(onClick = { viewModel.confirmImport(force = true) }) { Text("仍然导入") } },
+            dismissButton = { TextButton(onClick = viewModel::dismissConflicts) { Text("返回修改") } },
+        )
     }
 }
 

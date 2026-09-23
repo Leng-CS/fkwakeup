@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.lengcs.fkwakeup.core.common.BlockPhase
 import com.lengcs.fkwakeup.core.common.BlockPhaseCalculator
 import com.lengcs.fkwakeup.core.common.CurrentWeekCalculator
+import com.lengcs.fkwakeup.core.common.ConflictCandidate
+import com.lengcs.fkwakeup.core.common.CourseConflict
+import com.lengcs.fkwakeup.core.common.CourseConflictDetector
 import com.lengcs.fkwakeup.core.common.OnlineCourseItem
 import com.lengcs.fkwakeup.core.common.OnlineCourseTimeline
 import com.lengcs.fkwakeup.core.common.ScheduleBlock
@@ -29,6 +32,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -72,6 +76,9 @@ class ScheduleViewModel @Inject constructor(
 
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages = _messages.receiveAsFlow()
+    private val _conflicts = MutableStateFlow<List<CourseConflict>>(emptyList())
+    val conflicts: StateFlow<List<CourseConflict>> = _conflicts.asStateFlow()
+    private var confirmConflictAction: (() -> Unit)? = null
 
     init {
         viewModelScope.launch {
@@ -165,6 +172,7 @@ class ScheduleViewModel @Inject constructor(
         location: String?,
         note: String? = null,
         onDone: () -> Unit,
+        force: Boolean = false,
     ) {
         viewModelScope.launch {
             val trimmedName = name.trim()
@@ -189,6 +197,32 @@ class ScheduleViewModel @Inject constructor(
             // 起止节次写反了就自动纠正，比报错更省事
             val from = minOf(startSection, endSection).coerceAtLeast(1)
             val to = maxOf(startSection, endSection).coerceAtLeast(from)
+            val updatedSession = block.session.copy(
+                dayOfWeek = dayOfWeek.coerceIn(1, 7),
+                startSection = from,
+                endSection = to,
+                weekSpec = trimmedSpec,
+                location = location?.trim()?.ifBlank { null },
+                note = note?.trim()?.ifBlank { null },
+            )
+
+            if (!force) {
+                val term = _uiState.value.term ?: return@launch
+                val candidates = courseRepository.observeCourses(term.id).first().flatMap { entry ->
+                    entry.sessions.filter { it.id != block.session.id }.map { ConflictCandidate(entry.course.name, it) }
+                } + ConflictCandidate(trimmedName, updatedSession)
+                val found = CourseConflictDetector.detect(candidates, totalWeeks).filter {
+                    it.first.session.id == updatedSession.id || it.second.session.id == updatedSession.id
+                }
+                if (found.isNotEmpty()) {
+                    _conflicts.value = found
+                    confirmConflictAction = {
+                        saveBlockEdits(block, name, teacher, colorArgb, dayOfWeek, startSection, endSection, weeks, location, note, onDone, force = true)
+                    }
+                    return@launch
+                }
+            }
+            _conflicts.value = emptyList()
 
             courseRepository.updateCourse(
                 block.course.copy(
@@ -197,16 +231,7 @@ class ScheduleViewModel @Inject constructor(
                     colorArgb = colorArgb,
                 ),
             )
-            courseRepository.updateSession(
-                block.session.copy(
-                    dayOfWeek = dayOfWeek.coerceIn(1, 7),
-                    startSection = from,
-                    endSection = to,
-                    weekSpec = trimmedSpec,
-                    location = location?.trim()?.ifBlank { null },
-                    note = note?.trim()?.ifBlank { null },
-                ),
-            )
+            courseRepository.updateSession(updatedSession)
 
             WidgetRefreshScheduler.refreshNow(appContext)
             com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
@@ -214,6 +239,9 @@ class ScheduleViewModel @Inject constructor(
             onDone()
         }
     }
+
+    fun confirmConflict() { confirmConflictAction?.invoke(); dismissConflict() }
+    fun dismissConflict() { _conflicts.value = emptyList(); confirmConflictAction = null }
 
     /** 删除这一节课（只是删时间段，不是删整门课） */
     fun deleteBlock(block: ScheduleBlock, onDone: () -> Unit) {
