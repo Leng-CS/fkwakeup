@@ -8,6 +8,15 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ---
 
+## v1.0.1 · 2026-09-23
+
+### #49 [微调] 设置启动图标并美化 README
+
+- Issue：[#49](https://github.com/Leng-CS/fkwakeup/issues/49)；分支：`feat/launcher-icon-readme`；实现 commit `a9919d9`。
+- 使用项目根目录设计图配置 Android 自适应启动图标、旧版密度图标和圆形图标；README 增加图标展示、下载入口、功能简介与文档导航。
+- 版本更新为 `versionCode 4` / `versionName 1.0.1`，发布说明位于 `docs/releases/v1.0.1.md`。
+- 验证：`test :app:assembleDebug` 成功，298 项单元测试全绿；APK 元数据为 `1.0.1 (4)`，图标资源已打包。
+
 ## v1.0.0 · 2026-09-23
 
 - 首个正式版，整理并公开介绍项目功能、AI 截图导入流程、技术栈和本地数据原则。
