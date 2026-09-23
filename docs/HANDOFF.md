@@ -94,8 +94,7 @@ docs/timetable-sample.json     导入格式示例
 
 | 里程碑 | 状态 |
 |---|---|
-| M0–M7 | ✅ 已完成并合入 main（工程骨架 → 数据层 → 导入链路 → 导入 UI → 周视图 → 课程与学期管理 → 小组件 → 导出备份） |
-| M8（P1 提醒通知 + 冲突检测） | ⏸ 暂缓，未开始 |
+| M0–M8 | ✅ 已完成并合入 main（含课程提醒与保存前冲突检测） |
 | M9（MVP 后打磨与问题修复） | 🔄 进行中（长期收口，不会关闭） |
 
 M9 工作项：
@@ -117,16 +116,17 @@ M9 工作项：
 - **#24** [重构] 统一 action_* 通用按钮文案到 core:designsystem → 已合入 main
 - **#25** [需求] 周视图顶栏加常驻「导入课表」入口 → 已合入 main
 - **#26** [Bug] 课程管理新增/修改课程用错学期，致课程看不到或被搬走 → 已合入 main
-- **#27** [Bug] 导入页没有返回按钮 → 在分支 `feat/ui-polish-and-past-block` 上待合入
-- **#28** [微调] 课程管理页「新增课程」缺按钮样式 → 在分支 `feat/ui-polish-and-past-block` 上待合入
-- **#29** [需求] 已上完的课块变灰、正在上的加边框突出（含小组件同步）→ 在分支 `feat/ui-polish-and-past-block` 上待合入
+- **#27–#29** 导入页返回、课程管理按钮样式、已上完课程块灰化 → 已随 v0.2.0-demo 合入 main
+- **#41–#42** 节次时间表兼容修复与离开保存提醒 → 已合入 main
+- **#43–#44** M8 课程提醒与冲突检测 → 已随 v1.0.0 合入 main
+- **#47** 从课表截图识别并纠偏网课导入 → 已随 v1.0.0 合入 main
 
 > 已合入的分支：`chore/schedule-ui-polish`、`fix/term-switch-not-refreshing`、
 > `feat/course-block-edit-and-color`、`feat/import-preview-edit`、`feat/shared-action-strings`、
 > `feat/schedule-import-entry`、`fix/course-edit-wrong-term`。
 >
-> **demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，
-> 附调试卷 APK（Android 8.0+）。当前单元测试 **161 个全绿**。
+> **首个正式版已发布**：[`v1.0.0`](https://github.com/Leng-CS/fkwakeup/releases/tag/v1.0.0)，
+> 附 APK 与 SHA-256 校验文件（Android 8.0+）。
 
 ### 接手后先看这三件事
 

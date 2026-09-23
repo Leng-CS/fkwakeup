@@ -100,12 +100,11 @@ widget/glance/          Glance 小组件 + 更新调度
 
 ## 当前状态
 
-- **M0–M7 已完成并合入 main**：工程骨架、数据层、导入链路、导入 UI、周视图、课程与学期管理、小组件、导出备份
-- **M8（P1，提醒通知 + 冲突检测）暂缓**，未开始
+- **M0–M8 已完成并合入 main**：工程骨架、导入与课表管理、小组件、导出备份、课程提醒和时间冲突检测
 - **M9（MVP 后打磨与问题修复）进行中**
-  - #10–#26 已合入 main
-  - **#27–#29 在分支 `feat/ui-polish-and-past-block` 上待合入**（导入页返回按钮、新增课程按钮样式、已上完课块变灰）
-- **demo 已发布**：[`v0.1.0-demo`](https://github.com/Leng-CS/fkwakeup/releases/tag/v0.1.0-demo)，附调试卷 APK
-- 单元测试 **161 个**，全绿
+  - #10–#29、#41–#42 已合入 main
+  - #47 网课截图识别与导入预览纠偏已合入首个正式版
+- **正式版已发布**：[`v1.0.0`](https://github.com/Leng-CS/fkwakeup/releases/tag/v1.0.0)，提供 APK 与 SHA-256 校验文件
+- 当前全量单元测试、App 与小组件 Lint、Debug APK 构建均通过；完整记录见 `docs/CHANGELOG.md`
 
 开始编码前先看 `docs/CHANGELOG.md` 了解最近改了什么，再确认当前该做哪个 Issue。

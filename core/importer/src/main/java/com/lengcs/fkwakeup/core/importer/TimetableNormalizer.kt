@@ -72,7 +72,7 @@ object TimetableNormalizer {
         // ---- 时间段列表 ----
         val totalWeeks = term?.totalWeeks ?: 18
         val sessions = normalizeSessions(root["sessions"], totalWeeks, errors)
-        val onlineWindows = normalizeOnlineWindows(root["onlineWindows"], errors)
+        val onlineWindows = normalizeOnlineWindows(root["onlineWindows"], term, errors)
 
         return ImportDraft(
             term = term,
@@ -222,6 +222,7 @@ object TimetableNormalizer {
 
     private fun normalizeOnlineWindows(
         element: JsonElement?,
+        term: TermDraft?,
         errors: MutableList<ImportError>,
     ): List<OnlineWindowDraft> {
         val array = element as? kotlinx.serialization.json.JsonArray ?: return emptyList()
@@ -232,17 +233,29 @@ object TimetableNormalizer {
                 return@mapIndexed OnlineWindowDraft(i + 1, null, null, null, null, null, null, null)
             }
             val map = obj.toStringMap()
+            val startWeek = obj.intOrNull("startWeek")
+            val endWeek = obj.intOrNull("endWeek")
+            val explicitStart = parseDate(obj.stringOrNull("startDate") ?: obj.stringOrNull("start"))
+            val explicitEnd = parseDate(obj.stringOrNull("endDate") ?: obj.stringOrNull("end"))
+            val inferred = explicitStart == null && explicitEnd == null && term != null &&
+                startWeek != null && endWeek != null &&
+                startWeek in 1..term.totalWeeks && endWeek in startWeek..term.totalWeeks
+            val inferredStart = if (inferred) term?.startMonday?.plusWeeks(((startWeek ?: 1) - 1).toLong()) else null
+            val inferredEnd = if (inferred) term?.startMonday?.plusWeeks((endWeek ?: 1).toLong())?.minusDays(1) else null
             OnlineWindowDraft(
                 index = i + 1,
                 name = FieldNormalizer.nameKey(map)?.trim()?.takeIf { it.isNotBlank() },
                 teacher = FieldNormalizer.normalizeOptionalText(FieldNormalizer.teacherKey(map)),
-                startDate = parseDate(obj.stringOrNull("startDate") ?: obj.stringOrNull("start")),
-                endDate = parseDate(obj.stringOrNull("endDate") ?: obj.stringOrNull("end")),
+                startDate = explicitStart ?: inferredStart,
+                endDate = explicitEnd ?: inferredEnd,
                 platform = FieldNormalizer.normalizeOptionalText(obj.stringOrNull("platform")),
                 url = FieldNormalizer.normalizeOptionalText(
                     obj.stringOrNull("url") ?: obj.stringOrNull("link") ?: obj.stringOrNull("courseUrl"),
                 ),
-                note = FieldNormalizer.normalizeOptionalText(obj.stringOrNull("note")),
+                note = listOfNotNull(
+                    FieldNormalizer.normalizeOptionalText(obj.stringOrNull("note")),
+                    "根据学期周次推算日期".takeIf { inferred },
+                ).joinToString("；").ifBlank { null },
             )
         }
     }

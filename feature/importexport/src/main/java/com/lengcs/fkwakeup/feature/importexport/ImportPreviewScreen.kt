@@ -56,6 +56,8 @@ fun ImportPreviewScreen(
     // 正在编辑的 (课程下标, 时间段下标)
     var editingCourse by remember { mutableStateOf<Int?>(null) }
     var editingSession by remember { mutableStateOf<Int?>(null) }
+    var editingWindowCourse by remember { mutableStateOf<Int?>(null) }
+    var editingWindow by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = modifier
@@ -92,14 +94,22 @@ fun ImportPreviewScreen(
                     editingCourse = index
                     editingSession = sessionIndex
                 },
+                onEditWindow = { windowIndex ->
+                    editingWindowCourse = index
+                    editingWindow = windowIndex
+                },
                 onDelete = { viewModel.deleteCourse(index) },
                 onSplitSession = { sessionIndex -> viewModel.splitSession(index, sessionIndex) },
             )
         }
 
+        viewModel.pendingImportProblems.distinct().forEach { problem ->
+            Text(problem, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
+
         Button(
             onClick = viewModel::confirmImport,
-            enabled = !viewModel.isImporting && viewModel.courses.isNotEmpty(),
+            enabled = !viewModel.isImporting && viewModel.courses.isNotEmpty() && viewModel.pendingImportProblems.isEmpty(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
@@ -127,11 +137,16 @@ fun ImportPreviewScreen(
                 draft = draft,
                 totalWeeks = viewModel.totalWeeks,
                 sectionCount = viewModel.defaultSectionCount(),
+                onConvertToAsync = {
+                    viewModel.convertSessionToWindow(courseIndex, sessionIndex)
+                    editingCourse = null
+                    editingSession = null
+                },
                 onDismiss = {
                     editingCourse = null
                     editingSession = null
                 },
-                onSave = { state ->
+                onSave = { state, mode, platform, url ->
                     // 课程级字段（作用于该课全部时间段）
                     viewModel.renameCourse(courseIndex, state.name, state.teacher.ifBlank { null })
                     viewModel.updateCourseColor(courseIndex, state.colorArgb)
@@ -145,9 +160,40 @@ fun ImportPreviewScreen(
                         weeks = state.weeks,
                         location = state.location,
                         note = state.note,
+                        deliveryMode = mode,
+                        onlinePlatform = platform,
+                        onlineUrl = url,
                     )
                     editingCourse = null
                     editingSession = null
+                },
+            )
+        }
+    }
+    val windowCourseIndex = editingWindowCourse
+    val windowIndex = editingWindow
+    if (windowCourseIndex != null && windowIndex != null) {
+        val windowCourse = viewModel.courses.getOrNull(windowCourseIndex)
+        val window = windowCourse?.onlineWindows?.getOrNull(windowIndex)
+        if (windowCourse != null && window != null) {
+            OnlineWindowEditSheet(
+                courseName = windowCourse.name,
+                courseTeacher = windowCourse.teacher,
+                window = window,
+                onSave = { name, teacher, updatedWindow ->
+                    viewModel.renameCourse(windowCourseIndex, name, teacher)
+                    viewModel.updateOnlineWindow(windowCourseIndex, windowIndex, updatedWindow)
+                    editingWindowCourse = null
+                    editingWindow = null
+                },
+                onConvertToLive = {
+                    viewModel.convertWindowToLive(windowCourseIndex, windowIndex)
+                    editingWindowCourse = null
+                    editingWindow = null
+                },
+                onDismiss = {
+                    editingWindowCourse = null
+                    editingWindow = null
                 },
             )
         }
@@ -202,6 +248,7 @@ private fun TermCard(viewModel: ImportViewModel) {
 private fun CourseCard(
     course: MergedCourse,
     onEditSession: (Int) -> Unit,
+    onEditWindow: (Int) -> Unit,
     onDelete: () -> Unit,
     onSplitSession: (Int) -> Unit,
 ) {
@@ -250,7 +297,9 @@ private fun CourseCard(
                 }
             }
 
-            course.onlineWindows.forEach { window -> OnlineWindowRow(window) }
+            course.onlineWindows.forEachIndexed { index, window ->
+                OnlineWindowRow(window, onClick = { onEditWindow(index) })
+            }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onDelete) {
@@ -299,13 +348,13 @@ private fun SessionRow(
 }
 
 @Composable
-private fun OnlineWindowRow(window: OnlineWindowDraft) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+private fun OnlineWindowRow(window: OnlineWindowDraft, onClick: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp)) {
         Text(
             text = stringResource(
                 R.string.preview_online_window,
-                window.startDate?.toString().orEmpty(),
-                window.endDate?.toString().orEmpty(),
+                window.startDate?.toString() ?: stringResource(R.string.preview_online_missing),
+                window.endDate?.toString() ?: stringResource(R.string.preview_online_missing),
             ),
             style = MaterialTheme.typography.bodySmall,
         )

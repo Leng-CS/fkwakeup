@@ -8,6 +8,12 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 
 ---
 
+## v1.0.0 · 2026-09-23
+
+- 首个正式版，整理并公开介绍项目功能、AI 截图导入流程、技术栈和本地数据原则。
+- M8 提醒（#43）、保存前冲突检测（#44）与截图网课识别（#47）进入正式版；相关分支及实现提交：feat/m8-course-reminders（4649876、80f8e59、fff2ad2、a3889ec、e5b92d1）、feat/m8-conflict-detection（365ecef、7289301）、feat/import-online-course-recognition（4c30afc、ecbfdfa）。
+- Android 版本升级为 versionCode 3 / versionName 1.0.0；GitHub Release 提供 APK 与 SHA-256 校验文件。
+
 ## v0.2.0-demo · 2026-09-22
 
 - 重构桌面小组件：统一单入口，支持 `4×1 / 4×2 / 4×4`、纵向课程列表、按实例配置、课程范围与多种背景样式。
@@ -16,6 +22,13 @@ MVP（M0–M8）之后的**微调、Bug 修复与新增需求**都记在这里�
 - 发布版本升级为 `versionCode 2` / `versionName 0.2.0-demo`；完整实现和验证记录见下方 #32–#34。
 
 ## M9 · MVP 后打磨与问题修复
+
+### #47 [需求] 从教务课表截图识别并纠偏网课安排
+
+- Issue：[#47](https://github.com/Leng-CS/fkwakeup/issues/47)；分支：`feat/import-online-course-recognition`；实现 commit `4c30afc`。
+- 提示词明确扫描周网格外的网课区域，区分固定节次直播课与日期开放期异步课；信息不足时保留待确认草稿，不编造日期或节次。
+- 导入器支持按明确起止周次推算异步开放日期并标注来源。预览页可改课程名与教师、补日期、平台和链接、切换直播／异步；缺必需字段或开放期完全位于学期外时禁用确认导入，避免静默丢失。
+- 验证：全量 `testDebugUnitTest`、`:app:lintDebug`、`:app:assembleDebug` 通过；模拟器覆盖安装并确认主界面正常启动。提示词文档与 raw 资源内容一致。
 
 ### #42 [需求] 节次时间表离开时提醒保存未提交修改
 

@@ -9,6 +9,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +26,7 @@ import com.lengcs.fkwakeup.core.designsystem.editor.CourseSessionEditState
 import com.lengcs.fkwakeup.core.designsystem.editor.SheetTopBar
 import com.lengcs.fkwakeup.core.importer.model.MergedCourse
 import com.lengcs.fkwakeup.core.importer.model.SessionDraft
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 
 /**
  * 导入预览页的时间段编辑抽屉。
@@ -40,7 +43,8 @@ fun SessionEditSheet(
     totalWeeks: Int,
     sectionCount: Int,
     onDismiss: () -> Unit,
-    onSave: (CourseSessionEditState) -> Unit,
+    onSave: (CourseSessionEditState, SessionDeliveryMode, String?, String?) -> Unit,
+    onConvertToAsync: () -> Unit,
 ) {
     var state by remember(course.name, draft.index) {
         mutableStateOf(
@@ -61,6 +65,9 @@ fun SessionEditSheet(
         )
     }
     var weeksError by remember { mutableStateOf(false) }
+    var deliveryMode by remember(draft) { mutableStateOf(draft.deliveryMode ?: SessionDeliveryMode.LIVE_ONLINE) }
+    var onlinePlatform by remember(draft) { mutableStateOf(draft.onlinePlatform.orEmpty()) }
+    var onlineUrl by remember(draft) { mutableStateOf(draft.onlineUrl.orEmpty()) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -75,7 +82,7 @@ fun SessionEditSheet(
                 onSave = {
                     // #23：空周次会写出空 weekSpec，课程将在周视图里永久不显示
                     weeksError = state.weeks.isEmpty()
-                    if (!weeksError) onSave(state)
+                    if (!weeksError) onSave(state, deliveryMode, onlinePlatform.ifBlank { null }, onlineUrl.ifBlank { null })
                 },
                 saveEnabled = state.name.isNotBlank(),
                 onCancel = onDismiss,
@@ -102,6 +109,19 @@ fun SessionEditSheet(
                 totalWeeks = totalWeeks,
                 sectionCount = sectionCount,
             )
+            OutlinedButton(onClick = {
+                deliveryMode = if (deliveryMode == SessionDeliveryMode.LIVE_ONLINE) SessionDeliveryMode.ONSITE
+                    else SessionDeliveryMode.LIVE_ONLINE
+            }) {
+                Text(stringResource(if (deliveryMode == SessionDeliveryMode.LIVE_ONLINE) R.string.preview_mode_live else R.string.preview_mode_onsite))
+            }
+            if (deliveryMode == SessionDeliveryMode.LIVE_ONLINE) {
+                OutlinedTextField(onlinePlatform, { onlinePlatform = it }, label = { Text(stringResource(R.string.preview_live_platform)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(onlineUrl, { onlineUrl = it }, label = { Text(stringResource(R.string.preview_live_url)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedButton(onClick = onConvertToAsync) {
+                    Text(stringResource(R.string.preview_live_to_online))
+                }
+            }
         }
     }
 }
