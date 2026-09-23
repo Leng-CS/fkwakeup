@@ -9,6 +9,49 @@ import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
  */
 class TimetableImporterTest {
 
+    @Test
+    fun `截图网课区周次开放期可换算日期并标注来源`() {
+        val result = TimetableImporter.import("""
+            {"format":"campus-timetable","version":"1.1",
+             "term":{"name":"秋季","startMonday":"2026-09-07","totalWeeks":18},
+             "sessions":[],"onlineWindows":[{"name":"网络英语","startDate":null,"endDate":null,
+             "startWeek":2,"endWeek":3,"platform":"学习通"}]}
+        """.trimIndent())
+
+        assertThat(result.errors).isEmpty()
+        val window = result.courses.single().onlineWindows.single()
+        assertThat(window.startDate.toString()).isEqualTo("2026-09-14")
+        assertThat(window.endDate.toString()).isEqualTo("2026-09-27")
+        assertThat(window.note).contains("推算")
+    }
+
+    @Test
+    fun `仅有截止日期的网课保留草稿并提示补齐`() {
+        val result = TimetableImporter.import("""
+            {"format":"campus-timetable","version":"1.1",
+             "term":{"name":"秋季","startMonday":"2026-09-07","totalWeeks":18},
+             "sessions":[],"onlineWindows":[{"name":"网络英语","startDate":null,"endDate":"2026-12-31"}]}
+        """.trimIndent())
+
+        assertThat(result.courses.single().onlineWindows.single().startDate).isNull()
+        assertThat(result.errors.map { it.code }).contains("E_ONLINE_DATE")
+        assertThat(result.isSuccess).isTrue()
+    }
+
+    @Test
+    fun `缺节次的直播网课保留为可纠偏时间段`() {
+        val result = TimetableImporter.import("""
+            {"format":"campus-timetable","version":"1.1",
+             "term":{"name":"秋季","startMonday":"2026-09-07","totalWeeks":18},
+             "sessions":[{"name":"网络英语","dayOfWeek":3,"startSection":null,
+             "endSection":null,"weeks":"1-16","deliveryMode":"LIVE_ONLINE"}]}
+        """.trimIndent())
+
+        assertThat(result.courses.single().sessions.single().deliveryMode).isEqualTo(SessionDeliveryMode.LIVE_ONLINE)
+        assertThat(result.errors.map { it.code }).contains("E_SECTION_RANGE")
+        assertThat(result.isSuccess).isTrue()
+    }
+
     private val sampleJson = """
         {
           "format": "campus-timetable",

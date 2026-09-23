@@ -16,8 +16,13 @@ import com.lengcs.fkwakeup.core.database.repository.TermRepository
 import com.lengcs.fkwakeup.core.datastore.SettingsRepository
 import com.lengcs.fkwakeup.core.importer.TimetableImporter
 import com.lengcs.fkwakeup.core.importer.model.ImportError
+import com.lengcs.fkwakeup.core.importer.model.ErrorCodes
 import com.lengcs.fkwakeup.core.importer.model.ImportResult
 import com.lengcs.fkwakeup.core.importer.model.MergedCourse
+import com.lengcs.fkwakeup.core.importer.model.OnlineWindowDraft
+import com.lengcs.fkwakeup.core.importer.model.SessionDraft
+import com.lengcs.fkwakeup.core.importer.ImportPreviewGate
+import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
 import com.lengcs.fkwakeup.core.model.Course
 import com.lengcs.fkwakeup.core.model.CourseSession
 import com.lengcs.fkwakeup.core.model.DefaultSections
@@ -62,6 +67,9 @@ class ImportViewModel @Inject constructor(
 
     var errors: List<ImportError> by mutableStateOf(emptyList())
         private set
+
+    val pendingImportProblems: List<String>
+        get() = ImportPreviewGate.problems(courses, totalWeeks, startDate)
 
     var sessionCount: Int by mutableStateOf(0)
         private set
@@ -118,8 +126,8 @@ class ImportViewModel @Inject constructor(
         sessionCount = result.sessionCount
         onlineWindowCount = result.onlineWindowCount
 
-        if (result.errors.isEmpty()) {
-            errors = emptyList()
+        if (result.isSuccess && result.term != null && result.errors.none { it.code == ErrorCodes.FORMAT }) {
+            errors = result.errors
             termName = result.term?.name.orEmpty()
             totalWeeks = result.term?.totalWeeks ?: 18
             startDate = result.term?.startMonday
@@ -217,6 +225,9 @@ class ImportViewModel @Inject constructor(
         weeks: Set<Int>,
         location: String?,
         note: String?,
+        deliveryMode: SessionDeliveryMode? = null,
+        onlinePlatform: String? = null,
+        onlineUrl: String? = null,
     ) {
         val course = courses.getOrNull(courseIndex) ?: return
         val draft = course.sessions.getOrNull(sessionIndex) ?: return
@@ -226,6 +237,7 @@ class ImportViewModel @Inject constructor(
         val to = maxOf(startSection, endSection).coerceAtLeast(from)
 
         val updatedSessions = course.sessions.toMutableList()
+        val mode = deliveryMode ?: draft.deliveryMode
         updatedSessions[sessionIndex] = draft.copy(
             dayOfWeek = dayOfWeek.coerceIn(1, 7),
             startSection = from,
@@ -233,9 +245,56 @@ class ImportViewModel @Inject constructor(
             weeks = WeekSpecFormatter.format(weeks, totalWeeks),
             location = location?.trim()?.ifBlank { null },
             note = note?.trim()?.ifBlank { null },
+            deliveryMode = mode,
+            onlinePlatform = if (mode == SessionDeliveryMode.LIVE_ONLINE) onlinePlatform?.trim()?.ifBlank { null } else null,
+            onlineUrl = if (mode == SessionDeliveryMode.LIVE_ONLINE) onlineUrl?.trim()?.ifBlank { null } else null,
         )
         courses = courses.toMutableList().also {
             it[courseIndex] = course.copy(sessions = updatedSessions)
+        }
+    }
+
+    fun updateOnlineWindow(courseIndex: Int, windowIndex: Int, window: OnlineWindowDraft) {
+        val course = courses.getOrNull(courseIndex) ?: return
+        if (windowIndex !in course.onlineWindows.indices) return
+        courses = courses.toMutableList().also { list ->
+            list[courseIndex] = course.copy(onlineWindows = course.onlineWindows.toMutableList().also {
+                it[windowIndex] = window
+            })
+        }
+    }
+
+    fun convertWindowToLive(courseIndex: Int, windowIndex: Int) {
+        val course = courses.getOrNull(courseIndex) ?: return
+        val window = course.onlineWindows.getOrNull(windowIndex) ?: return
+        val session = SessionDraft(
+            index = window.index, name = course.name, teacher = course.teacher,
+            location = null, dayOfWeek = null, startSection = null, endSection = null,
+            weeks = "1-$totalWeeks", note = window.note?.replace("待确认授课方式", "")?.ifBlank { null },
+            deliveryMode = SessionDeliveryMode.LIVE_ONLINE,
+            onlinePlatform = window.platform, onlineUrl = window.url,
+        )
+        courses = courses.toMutableList().also { list ->
+            list[courseIndex] = course.copy(
+                onlineWindows = course.onlineWindows.filterIndexed { i, _ -> i != windowIndex },
+                sessions = course.sessions + session,
+            )
+        }
+    }
+
+    fun convertSessionToWindow(courseIndex: Int, sessionIndex: Int) {
+        val course = courses.getOrNull(courseIndex) ?: return
+        val session = course.sessions.getOrNull(sessionIndex) ?: return
+        val window = OnlineWindowDraft(
+            index = session.index, name = course.name, teacher = course.teacher,
+            startDate = null, endDate = null, platform = session.onlinePlatform,
+            url = session.onlineUrl, note = session.note,
+        )
+        courses = courses.toMutableList().also { list ->
+            list[courseIndex] = course.copy(
+                sessions = course.sessions.filterIndexed { i, _ -> i != sessionIndex },
+                onlineWindows = course.onlineWindows + window,
+            )
         }
     }
 
@@ -259,7 +318,7 @@ class ImportViewModel @Inject constructor(
     // ---- 落库 ----
 
     fun confirmImport(force: Boolean = false) {
-        if (isImporting) return
+        if (isImporting || pendingImportProblems.isNotEmpty() || courses.isEmpty()) return
         if (!force) {
             val candidates = courses.flatMapIndexed { courseIndex, course ->
                 course.sessions.mapNotNull { draft ->

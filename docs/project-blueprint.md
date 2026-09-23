@@ -388,6 +388,13 @@ App 使用统一的「云朵课表」视觉语言：奶油纸张底色、蓝莓�
 - 星期相同、周次集合相交且节次范围重叠时判定冲突；线下与直播之间同样检测，相邻节次与异步开放期不算冲突。
 - 课程编辑、周视图快捷编辑和导入确认共用同一纯逻辑检测器。提示具体课程、周次和节次，并允许「返回修改」或「仍然保存」。
 
+### FR-19 从课表截图识别网课（P0，M9，#47）
+
+- 单张教务课表截图中的周网格和网格外网课区域都要识别。固定星期、节次的直播课进入 `sessions`，仅有开放期的异步课进入 `onlineWindows`；授课方式不明时保留待确认草稿，不猜测。
+- 异步网课有明确学期周次时，按学期首周周一换算开放日期并在预览标注推算来源；只有单侧日期时保留已知日期，不自动补另一侧。
+- 预览页可修改授课方式、直播节次、异步日期、平台和链接。待确认或缺必需字段的记录必须先补齐，确认导入按钮不可用，不得静默丢弃。
+- 混合教学的自动归并规则暂不扩展；沿用现有按课程名与教师归并方式。
+
 ---
 
 ## 4. 数据模型
@@ -716,9 +723,13 @@ val DEFAULT_SECTIONS = listOf(
 | `teacher` | string\|null | 否 | 未知填 `null` |
 | `startDate` | string | 是 | `"YYYY-MM-DD"` |
 | `endDate` | string | 是 | `"YYYY-MM-DD"`，不得早于开始日期 |
+| `startWeek` / `endWeek` | int | 否 | AI 草稿可附明确的开放起止周次，用于推算日期 |
 | `platform` | string\|null | 否 | 学习平台 |
 | `url` | string\|null | 否 | 课程链接，可为空 |
 | `note` | string\|null | 否 | 备注 |
+
+AI 截图识别草稿可暂时用 `null` 表示缺失的直播星期／节次或异步开放日期，供导入预览人工补齐；完整导出文件仍必须填写上述必需字段。导入预览不得静默跳过缺字段记录。
+`onlineWindows[i]` 还可带可选 `startWeek`、`endWeek` 整数（1..totalWeeks）：仅当两个日期都缺失且周次区间有效时，导入器按 `term.startMonday` 推算开始周周一、结束周周日，并标注推算来源。
 
 ### 5.3 JSON Schema
 
@@ -761,9 +772,9 @@ val DEFAULT_SECTIONS = listOf(
           "name": { "type": "string", "minLength": 1 },
           "teacher": { "type": ["string", "null"] },
           "location": { "type": ["string", "null"] },
-          "dayOfWeek": { "type": "integer", "minimum": 1, "maximum": 7 },
-          "startSection": { "type": "integer", "minimum": 1 },
-          "endSection": { "type": "integer", "minimum": 1 },
+          "dayOfWeek": { "type": ["integer", "null"], "minimum": 1, "maximum": 7 },
+          "startSection": { "type": ["integer", "null"], "minimum": 1 },
+          "endSection": { "type": ["integer", "null"], "minimum": 1 },
           "weeks": { "type": "string", "minLength": 1 },
           "deliveryMode": { "enum": ["onsite", "liveOnline"] },
           "onlinePlatform": { "type": ["string", "null"] },
@@ -780,8 +791,10 @@ val DEFAULT_SECTIONS = listOf(
         "properties": {
           "name": { "type": "string", "minLength": 1 },
           "teacher": { "type": ["string", "null"] },
-          "startDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-          "endDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "startDate": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "endDate": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "startWeek": { "type": "integer", "minimum": 1 },
+          "endWeek": { "type": "integer", "minimum": 1 },
           "platform": { "type": ["string", "null"] },
           "url": { "type": ["string", "null"] },
           "note": { "type": ["string", "null"] }

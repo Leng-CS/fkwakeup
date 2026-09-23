@@ -6,7 +6,7 @@
     <!-- 分步引导 -->
     <string name="import_step_1">第 1 步　去教务系统截一张完整的课表</string>
     <string name="import_guide_title">四步，把截图变成课表</string>
-    <string name="import_step_1_tip1">要能看到星期表头和左侧节次列，别只截课程格子</string>
+    <string name="import_step_1_tip1">要包含星期、节次，以及周视图外的网课区域</string>
     <string name="import_step_1_tip2">课表太长就分两次截，一次识别半张</string>
     <string name="import_step_1_tip3">避免模糊、反光、只截一半</string>
     <string name="import_step_2">第 2 步　复制提示词，连截图一起发给你常用的 AI</string>
@@ -41,7 +41,7 @@
     <!-- 预览页 -->
     <string name="preview_title">确认识别结果</string>
     <string name="preview_summary">共 %1$d 个固定时间段、%2$d 个网课开放期 → 归并为 %3$d 门课程</string>
-    <string name="preview_tap_hint">点任意一条时间段即可修改周几、节次、周次、地点等</string>
+    <string name="preview_tap_hint">点时间段或网课安排，可修改授课方式、节次、开放日期等</string>
     <string name="preview_term_card">学期信息</string>
     <string name="preview_term_name">学期名称</string>
     <string name="preview_term_weeks">总周数</string>
@@ -55,6 +55,23 @@
     <string name="preview_edit_session">点此编辑</string>
     <string name="preview_live_online">直播网课</string>
     <string name="preview_online_window">异步网课 · %1$s 至 %2$s</string>
+    <string name="preview_online_edit_title">网课安排</string>
+    <string name="preview_online_edit_hint">异步网课只有开放日期；若按固定星期和节次直播，请切换为直播课。</string>
+    <string name="preview_online_start">开放日期</string>
+    <string name="preview_online_end">截止日期</string>
+    <string name="preview_online_date_value">%1$s：%2$s</string>
+    <string name="preview_online_missing">待补充</string>
+    <string name="preview_online_platform">学习平台</string>
+    <string name="preview_online_url">课程链接</string>
+    <string name="preview_online_note">备注</string>
+    <string name="preview_online_invalid">请补齐有效的开放、截止日期，且截止日期不能早于开放日期</string>
+    <string name="preview_online_save">确认为异步网课并保存</string>
+    <string name="preview_online_to_live">改为直播网课，补充星期和节次</string>
+    <string name="preview_live_to_online">改为异步网课，补充开放日期</string>
+    <string name="preview_live_platform">直播平台</string>
+    <string name="preview_live_url">直播链接</string>
+    <string name="preview_mode_live">授课方式：直播网课</string>
+    <string name="preview_mode_onsite">授课方式：线下课程</string>
     <string name="preview_edit_title">编辑时间段</string>
     <string name="preview_name_required">课程名称不能为空</string>
     <string name="preview_weeks_required">请至少选择一周</string>
