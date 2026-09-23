@@ -76,6 +76,12 @@
     <string name="sections_edit_time">编辑第 %1$d 节时间</string>
     <string name="sections_restore_auto">恢复自动递推</string>
     <string name="sections_invalid_order">第 %1$d 节结束时间不得晚于第 %2$d 节开始时间</string>
+    <string name="sections_unsaved_title">节次时间尚未保存</string>
+    <string name="sections_unsaved_message">要先保存更改再离开吗？</string>
+    <string name="sections_unsaved_invalid">当前时间表有错误，请继续编辑或放弃更改。</string>
+    <string name="sections_unsaved_save_failed">保存失败，时间表仍未更改。请重试或继续编辑。</string>
+    <string name="sections_continue_editing">继续编辑</string>
+    <string name="sections_discard_changes">放弃更改</string>
 
     <!-- 导出 -->
     <string name="course_export">导出</string>

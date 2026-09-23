@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -24,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lengcs.fkwakeup.core.common.PlannedSection
 import com.lengcs.fkwakeup.core.common.SectionTimingOverride
+import com.lengcs.fkwakeup.core.common.SectionTimingDraft
 import com.lengcs.fkwakeup.core.common.SectionTimingPlanResult
 import com.lengcs.fkwakeup.core.common.SectionTimingPlanner
 import com.lengcs.fkwakeup.core.common.SectionTimingSettings
@@ -36,16 +38,25 @@ internal fun SectionTimingEditor(
     sections: List<SectionTemplate>,
     onSave: (List<SectionTemplate>) -> Unit,
     onReset: () -> Unit,
+    onDraftChange: (Boolean, List<SectionTemplate>?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var settings by remember(sections) { mutableStateOf(SectionTimingPlanner.settingsFrom(sections)) }
+    val initialDraft = remember(sections) { SectionTimingPlanner.draftFrom(sections) }
+    var settings by remember(sections) { mutableStateOf(initialDraft.settings) }
     val overrides = remember(sections) {
-        mutableStateListOf<SectionTimingOverride>().apply { addAll(SectionTimingPlanner.overridesFrom(sections)) }
+        mutableStateListOf<SectionTimingOverride>().apply { addAll(initialDraft.overrides) }
     }
-    var sectionCount by remember(sections) { mutableIntStateOf(sections.maxOfOrNull(SectionTemplate::index) ?: 12) }
+    var sectionCount by remember(sections) { mutableIntStateOf(initialDraft.sectionCount) }
     var globalField by remember { mutableStateOf<GlobalTimingField?>(null) }
     var editingSection by remember { mutableStateOf<PlannedSection?>(null) }
     val plan = SectionTimingPlanner.build(sectionCount, settings, overrides)
+    val draft = SectionTimingDraft(sectionCount, settings, overrides.toList())
+    SideEffect {
+        onDraftChange(
+            SectionTimingPlanner.hasUnsavedChanges(initialDraft, draft),
+            (plan as? SectionTimingPlanResult.Valid)?.sections?.map(PlannedSection::toTemplate),
+        )
+    }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.sections_global_settings), style = MaterialTheme.typography.titleMedium)

@@ -10,6 +10,34 @@ class SectionTimingRegressionTest {
     private val overrides = SectionTimingPlanner.overridesFrom(defaults)
 
     @Test
+    fun `untouched imported table has no unsaved changes`() {
+        val imported = listOf(SectionTemplate(7, 1, 480, 525), SectionTemplate(7, 2, 535, 600))
+        val initial = SectionTimingPlanner.draftFrom(imported)
+        assertThat(SectionTimingPlanner.hasUnsavedChanges(initial, initial.copy())).isFalse()
+    }
+
+    @Test
+    fun `global rule and section count changes are detected`() {
+        val initial = SectionTimingPlanner.draftFrom(defaults)
+        assertThat(SectionTimingPlanner.hasUnsavedChanges(initial, initial.copy(
+            settings = initial.settings.copy(lessonDurationMinutes = 47),
+        ))).isTrue()
+        assertThat(SectionTimingPlanner.hasUnsavedChanges(initial, initial.copy(sectionCount = 11))).isTrue()
+    }
+
+    @Test
+    fun `breakpoint edits are detected and reverting clears dirty state`() {
+        val initial = SectionTimingPlanner.draftFrom(defaults)
+        val changed = initial.copy(overrides = initial.overrides + SectionTimingOverride(2, 540))
+        assertThat(SectionTimingPlanner.hasUnsavedChanges(initial, changed)).isTrue()
+        assertThat(SectionTimingPlanner.hasUnsavedChanges(initial, changed.copy(overrides = initial.overrides))).isFalse()
+        assertThat(SectionTimingPlanner.hasUnsavedChanges(
+            initial,
+            initial.copy(overrides = initial.overrides.reversed()),
+        )).isFalse()
+    }
+
+    @Test
     fun `changing global duration updates automatic sections and preserves breaks`() {
         val result = SectionTimingPlanner.build(12, SectionTimingSettings(47, 10), overrides)
             as SectionTimingPlanResult.Valid

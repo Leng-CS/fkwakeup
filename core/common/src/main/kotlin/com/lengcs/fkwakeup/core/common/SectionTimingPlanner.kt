@@ -20,6 +20,13 @@ data class PlannedSection(
     val endMinutes: Int,
 )
 
+/** 编辑器中的完整草稿；与进入页面时的快照比较，避免特殊导入时间表首次打开就误报。 */
+data class SectionTimingDraft(
+    val sectionCount: Int,
+    val settings: SectionTimingSettings,
+    val overrides: List<SectionTimingOverride>,
+)
+
 sealed interface SectionTimingPlanResult {
     data class Valid(val sections: List<PlannedSection>) : SectionTimingPlanResult
     data class Invalid(val message: String) : SectionTimingPlanResult
@@ -32,6 +39,18 @@ sealed interface SectionTimingPlanResult {
  * 因而不会改变导入、导出或 Room 数据契约。
  */
 object SectionTimingPlanner {
+
+    fun draftFrom(templates: List<SectionTemplate>): SectionTimingDraft = SectionTimingDraft(
+        sectionCount = templates.maxOfOrNull(SectionTemplate::index) ?: 12,
+        settings = settingsFrom(templates),
+        overrides = overridesFrom(templates),
+    )
+
+    fun hasUnsavedChanges(initial: SectionTimingDraft, current: SectionTimingDraft): Boolean =
+        initial.sectionCount != current.sectionCount ||
+            initial.settings != current.settings ||
+            initial.overrides.sortedBy(SectionTimingOverride::index) !=
+            current.overrides.sortedBy(SectionTimingOverride::index)
 
     /** 只有开始时间真的改变才新增断点；确认原值或只改结束时间不锁定自动节次。 */
     fun overridesAfterEdit(
