@@ -33,6 +33,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 data class EditableOnlineWindow(
+    val id: Long = 0L,
     val startDate: LocalDate,
     val endDate: LocalDate,
     val platform: String? = null,
@@ -40,6 +41,7 @@ data class EditableOnlineWindow(
     val note: String? = null,
 ) {
     fun toDomain(courseId: Long): OnlineCourseWindow = OnlineCourseWindow(
+        id = id,
         courseId = courseId,
         startDate = startDate,
         endDate = endDate,
@@ -50,6 +52,7 @@ data class EditableOnlineWindow(
 
     companion object {
         fun fromDomain(window: OnlineCourseWindow) = EditableOnlineWindow(
+            id = window.id,
             startDate = window.startDate,
             endDate = window.endDate,
             platform = window.platform,

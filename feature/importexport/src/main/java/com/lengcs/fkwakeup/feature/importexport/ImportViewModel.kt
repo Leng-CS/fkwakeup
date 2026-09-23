@@ -318,6 +318,7 @@ class ImportViewModel @Inject constructor(
 
             // 写库后主动刷新小组件，否则要等 15 分钟兜底
             WidgetRefreshScheduler.refreshNow(appContext)
+            com.lengcs.fkwakeup.core.reminder.ReminderScheduler.requestRebuild(appContext)
         }
     }
 

@@ -157,7 +157,9 @@ private fun LessonRow(lesson: WidgetLesson, config: WidgetConfig, rowHeight: and
         Text(
             text = "⏰",
             style = TextStyle(color = config.secondaryTextColor(), fontSize = 16.sp),
-            modifier = context.openAction("alarm")?.let { GlanceModifier.padding(horizontal = 4.dp).clickable(it) }
+            modifier = context.openAction(
+                "reminder?courseId=${lesson.courseId}&occurrenceKey=session%3A${lesson.sessionId}%3Aweek%3A${lesson.weekNumber}",
+            )?.let { GlanceModifier.padding(horizontal = 4.dp).clickable(it) }
                 ?: GlanceModifier.padding(horizontal = 4.dp),
         )
     }

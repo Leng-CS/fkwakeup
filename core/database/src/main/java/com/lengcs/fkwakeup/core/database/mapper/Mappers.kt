@@ -10,6 +10,12 @@ import com.lengcs.fkwakeup.core.model.Course
 import com.lengcs.fkwakeup.core.model.CourseSession
 import com.lengcs.fkwakeup.core.model.CourseWithSessions
 import com.lengcs.fkwakeup.core.model.OnlineCourseWindow
+import com.lengcs.fkwakeup.core.model.CourseReminderRule
+import com.lengcs.fkwakeup.core.model.RecurringReminderMode
+import com.lengcs.fkwakeup.core.model.ReminderOccurrenceKind
+import com.lengcs.fkwakeup.core.model.ReminderOccurrenceOverride
+import com.lengcs.fkwakeup.core.database.entity.CourseReminderRuleEntity
+import com.lengcs.fkwakeup.core.database.entity.ReminderOccurrenceOverrideEntity
 import com.lengcs.fkwakeup.core.model.SectionTemplate
 import com.lengcs.fkwakeup.core.model.Term
 import com.lengcs.fkwakeup.core.model.SessionDeliveryMode
@@ -125,6 +131,35 @@ fun OnlineCourseWindow.toEntity(): OnlineCourseWindowEntity =
         url = url,
         note = note,
     )
+
+fun CourseReminderRuleEntity.toDomain() = CourseReminderRule(
+    courseId = courseId,
+    recurringMode = runCatching { RecurringReminderMode.valueOf(recurringMode) }.getOrDefault(RecurringReminderMode.NONE),
+    primaryMinutesBefore = primaryMinutesBefore,
+    secondaryMinutesBefore = secondaryMinutesBefore,
+    asyncOpenEnabled = asyncOpenEnabled,
+    asyncOpenMinutesOfDay = asyncOpenMinutesOfDay,
+    asyncDeadlineEnabled = asyncDeadlineEnabled,
+    asyncDeadlineDaysBefore = asyncDeadlineDaysBefore,
+    asyncDeadlineMinutesOfDay = asyncDeadlineMinutesOfDay,
+)
+
+fun CourseReminderRule.toEntity() = CourseReminderRuleEntity(
+    courseId, recurringMode.name, primaryMinutesBefore, secondaryMinutesBefore,
+    asyncOpenEnabled, asyncOpenMinutesOfDay, asyncDeadlineEnabled,
+    asyncDeadlineDaysBefore, asyncDeadlineMinutesOfDay,
+)
+
+fun ReminderOccurrenceOverrideEntity.toDomain() = ReminderOccurrenceOverride(
+    occurrenceKey, courseId,
+    runCatching { ReminderOccurrenceKind.valueOf(kind) }.getOrDefault(ReminderOccurrenceKind.SESSION),
+    sourceId, weekNumber, enabled, primaryMinutesBefore, secondaryMinutesBefore,
+)
+
+fun ReminderOccurrenceOverride.toEntity() = ReminderOccurrenceOverrideEntity(
+    occurrenceKey, courseId, kind.name, sourceId, weekNumber, enabled,
+    primaryMinutesBefore, secondaryMinutesBefore,
+)
 
 fun DbCourseWithSessions.toDomain(): CourseWithSessions =
     CourseWithSessions(

@@ -2,6 +2,7 @@ package com.lengcs.fkwakeup
 
 import android.app.Application
 import com.lengcs.fkwakeup.widget.glance.WidgetRefreshScheduler
+import com.lengcs.fkwakeup.core.reminder.ReminderScheduler
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,7 @@ class FkwakeupApplication : Application() {
         // 兜底刷新晚几百毫秒注册完全无所谓。
         CoroutineScope(Dispatchers.Default).launch {
             WidgetRefreshScheduler.enqueue(this@FkwakeupApplication)
+            ReminderScheduler.requestRebuild(this@FkwakeupApplication)
         }
     }
 }

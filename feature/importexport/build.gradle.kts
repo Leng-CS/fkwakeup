@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":core:importer"))
     implementation(project(":core:exporter"))
     implementation(project(":core:database"))
+    implementation(project(":core:reminder"))
     implementation(project(":core:datastore"))
     implementation(project(":widget:glance"))
 
